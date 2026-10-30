@@ -2,24 +2,20 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { getMyProfile } from "../services/authApi";
+
 import {
   createInterview,
   getQuestionBankPreview,
+  getAdaptiveDifficulty,
   type QuestionBankPreviewEntry,
+  type AdaptiveDifficultyResult,
+  type InterviewCategory,
+  type InterviewDifficulty,
 } from "../services/interviewApi";
 
 interface InterviewSetupPageProps {
   token: string;
 }
-
-type InterviewCategory =
-  | "technical"
-  | "behavioral"
-  | "mixed"
-  | "hr"
-  | "situational"
-  | "coding";
-type InterviewDifficulty = "beginner" | "intermediate" | "advanced";
 
 const inputClass =
   "mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20";
@@ -29,17 +25,49 @@ export default function InterviewSetupPage({
 }: InterviewSetupPageProps) {
   const navigate = useNavigate();
 
+  // =========================================================
+  // FORM STATE
+  // =========================================================
+
   const [targetRole, setTargetRole] = useState("");
+
   const [category, setCategory] =
     useState<InterviewCategory>("technical");
+
   const [difficulty, setDifficulty] =
     useState<InterviewDifficulty>("intermediate");
+
   const [duration, setDuration] = useState("15");
+
+  // =========================================================
+  // LOADING AND ERROR STATES
+  // =========================================================
+
   const [loadingProfile, setLoadingProfile] = useState(true);
-  const [previewQuestions, setPreviewQuestions] = useState<QuestionBankPreviewEntry[]>([]);
+
+  const [previewQuestions, setPreviewQuestions] =
+    useState<QuestionBankPreviewEntry[]>([]);
+
   const [previewLoading, setPreviewLoading] = useState(false);
+
   const [submitting, setSubmitting] = useState(false);
+
   const [error, setError] = useState("");
+
+  // =========================================================
+  // ADAPTIVE DIFFICULTY STATE
+  // =========================================================
+
+  const [adaptiveRecommendation, setAdaptiveRecommendation] =
+    useState<AdaptiveDifficultyResult | null>(null);
+
+  const [adaptiveLoading, setAdaptiveLoading] = useState(true);
+
+  const [adaptiveError, setAdaptiveError] = useState("");
+
+  // =========================================================
+  // LOAD CANDIDATE PROFILE
+  // =========================================================
 
   useEffect(() => {
     let cancelled = false;
@@ -76,6 +104,55 @@ export default function InterviewSetupPage({
       cancelled = true;
     };
   }, [token]);
+
+  // =========================================================
+  // LOAD ADAPTIVE DIFFICULTY RECOMMENDATION
+  // GET /api/interviews/adaptive-difficulty
+  // =========================================================
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadAdaptiveRecommendation() {
+      if (!token) {
+        setAdaptiveLoading(false);
+        return;
+      }
+
+      setAdaptiveLoading(true);
+      setAdaptiveError("");
+
+      try {
+        const result = await getAdaptiveDifficulty(token);
+
+        if (!cancelled) {
+          setAdaptiveRecommendation(result);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setAdaptiveError(
+            err instanceof Error
+              ? err.message
+              : "Unable to load your difficulty recommendation."
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setAdaptiveLoading(false);
+        }
+      }
+    }
+
+    void loadAdaptiveRecommendation();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
+  // =========================================================
+  // LOAD QUESTION BANK PREVIEW
+  // =========================================================
 
   useEffect(() => {
     let cancelled = false;
@@ -115,19 +192,44 @@ export default function InterviewSetupPage({
     };
   }, [category, difficulty, targetRole, token]);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  // =========================================================
+  // APPLY ADAPTIVE RECOMMENDATION
+  // =========================================================
+
+  function handleApplyRecommendation() {
+    if (!adaptiveRecommendation) {
+      return;
+    }
+
+    setDifficulty(
+      adaptiveRecommendation.recommendedDifficulty
+    );
+  }
+
+  // =========================================================
+  // CREATE INTERVIEW
+  // =========================================================
+
+  async function handleSubmit(
+    event: FormEvent<HTMLFormElement>
+  ) {
     event.preventDefault();
+
     setError("");
 
     const trimmedRole = targetRole.trim();
 
     if (trimmedRole.length < 2 || trimmedRole.length > 100) {
-      setError("Enter a job role between 2 and 100 characters.");
+      setError(
+        "Enter a job role between 2 and 100 characters."
+      );
       return;
     }
 
     if (!token) {
-      setError("Your session has expired. Please sign in again.");
+      setError(
+        "Your session has expired. Please sign in again."
+      );
       return;
     }
 
@@ -156,7 +258,9 @@ export default function InterviewSetupPage({
         JSON.stringify(interview)
       );
 
-      navigate(`/interview/${encodeURIComponent(interview.id)}`);
+      navigate(
+        `/interview/${encodeURIComponent(interview.id)}`
+      );
     } catch (err) {
       setError(
         err instanceof Error
@@ -168,6 +272,10 @@ export default function InterviewSetupPage({
     }
   }
 
+  // =========================================================
+  // PROFILE LOADING SCREEN
+  // =========================================================
+
   if (loadingProfile) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-200">
@@ -176,16 +284,24 @@ export default function InterviewSetupPage({
     );
   }
 
+  // =========================================================
+  // MAIN PAGE
+  // =========================================================
+
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-8 text-slate-100 sm:px-8">
       <div className="mx-auto max-w-3xl">
+
+        {/* HEADER */}
+
         <header className="mb-8 flex items-center justify-between gap-4">
           <button
             type="button"
             onClick={() => navigate("/dashboard")}
             className="text-xl font-extrabold"
           >
-            Interview<span className="text-indigo-400">IQ</span>
+            Interview
+            <span className="text-indigo-400">IQ</span>
           </button>
 
           <button
@@ -198,6 +314,9 @@ export default function InterviewSetupPage({
         </header>
 
         <section className="rounded-3xl border border-slate-800 bg-slate-900 p-6 sm:p-9">
+
+          {/* PAGE TITLE */}
+
           <p className="text-sm font-semibold uppercase tracking-widest text-indigo-300">
             Mock interview
           </p>
@@ -211,6 +330,8 @@ export default function InterviewSetupPage({
             goals and experience level.
           </p>
 
+          {/* GENERAL ERROR */}
+
           {error && (
             <div
               role="alert"
@@ -220,15 +341,118 @@ export default function InterviewSetupPage({
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+          {/* ================================================= */}
+          {/* ADAPTIVE DIFFICULTY RECOMMENDATION CARD */}
+          {/* ================================================= */}
+
+          <div className="mt-6 rounded-2xl border border-indigo-500/30 bg-indigo-500/10 p-5">
+
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-indigo-300">
+                  AI-powered recommendation
+                </p>
+
+                <h2 className="mt-2 text-xl font-bold text-white">
+                  Adaptive difficulty
+                </h2>
+              </div>
+
+              <span className="rounded-full bg-indigo-500/20 px-3 py-1 text-sm font-semibold capitalize text-indigo-200">
+                {adaptiveLoading
+                  ? "Loading..."
+                  : adaptiveRecommendation?.recommendedDifficulty ||
+                    "Unavailable"}
+              </span>
+            </div>
+
+            {adaptiveLoading ? (
+              <p className="mt-3 text-sm text-slate-400">
+                Analyzing your previous interview performance...
+              </p>
+            ) : adaptiveRecommendation ? (
+              <>
+                <p className="mt-3 text-sm leading-6 text-slate-300">
+                  {adaptiveRecommendation.reason}
+                </p>
+
+                {/* PERFORMANCE STATISTICS */}
+
+                <div className="mt-4 grid grid-cols-2 gap-3">
+
+                  <div className="rounded-xl border border-slate-700 bg-slate-950/70 p-3">
+                    <p className="text-xs text-slate-400">
+                      Previous average score
+                    </p>
+
+                    <p className="mt-1 text-xl font-bold text-white">
+                      {adaptiveRecommendation.previousAverageScore !== null
+                        ? `${adaptiveRecommendation.previousAverageScore}%`
+                        : "N/A"}
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-700 bg-slate-950/70 p-3">
+                    <p className="text-xs text-slate-400">
+                      Completed interviews
+                    </p>
+
+                    <p className="mt-1 text-xl font-bold text-white">
+                      {adaptiveRecommendation.completedInterviewCount}
+                    </p>
+                  </div>
+
+                </div>
+
+                {/* APPLY RECOMMENDATION BUTTON */}
+
+                <button
+                  type="button"
+                  onClick={handleApplyRecommendation}
+                  disabled={submitting}
+                  className="mt-4 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Apply recommendation
+                </button>
+
+                <p className="mt-3 text-xs text-slate-400">
+                  You can still select a different difficulty manually.
+                </p>
+              </>
+            ) : (
+              <p className="mt-3 text-sm text-amber-300">
+                {adaptiveError ||
+                  "Your recommendation is currently unavailable. You can still select a difficulty manually."}
+              </p>
+            )}
+
+          </div>
+
+          {/* ================================================= */}
+          {/* INTERVIEW SETUP FORM */}
+          {/* ================================================= */}
+
+          <form
+            onSubmit={handleSubmit}
+            className="mt-8 space-y-6"
+          >
+
+            {/* TARGET ROLE */}
+
             <div>
-              <label htmlFor="targetRole" className="text-sm font-semibold">
+              <label
+                htmlFor="targetRole"
+                className="text-sm font-semibold"
+              >
                 Target job role
               </label>
+
               <input
                 id="targetRole"
                 value={targetRole}
-                onChange={(event) => setTargetRole(event.target.value)}
+                onChange={(event) =>
+                  setTargetRole(event.target.value)
+                }
                 minLength={2}
                 maxLength={100}
                 required
@@ -238,55 +462,104 @@ export default function InterviewSetupPage({
               />
             </div>
 
+            {/* INTERVIEW CATEGORY */}
+
             <div>
-              <label htmlFor="category" className="text-sm font-semibold">
+              <label
+                htmlFor="category"
+                className="text-sm font-semibold"
+              >
                 Interview category
               </label>
+
               <select
                 id="category"
                 value={category}
                 onChange={(event) =>
-                  setCategory(event.target.value as InterviewCategory)
+                  setCategory(
+                    event.target.value as InterviewCategory
+                  )
                 }
                 className={inputClass}
                 disabled={submitting}
               >
-                <option value="technical">Technical interview</option>
-                <option value="behavioral">Behavioral interview</option>
-                <option value="hr">HR interview</option>
-                <option value="situational">Situational interview</option>
-                <option value="coding">Coding &amp; problem solving</option>
-                <option value="mixed">Mixed interview</option>
+                <option value="technical">
+                  Technical interview
+                </option>
+
+                <option value="behavioral">
+                  Behavioral interview
+                </option>
+
+                <option value="hr">
+                  HR interview
+                </option>
+
+                <option value="situational">
+                  Situational interview
+                </option>
+
+                <option value="coding">
+                  Coding &amp; problem solving
+                </option>
+
+                <option value="mixed">
+                  Mixed interview
+                </option>
               </select>
             </div>
 
+            {/* DIFFICULTY */}
+
             <div>
-              <label htmlFor="difficulty" className="text-sm font-semibold">
+              <label
+                htmlFor="difficulty"
+                className="text-sm font-semibold"
+              >
                 Difficulty level
               </label>
+
               <select
                 id="difficulty"
                 value={difficulty}
                 onChange={(event) =>
-                  setDifficulty(event.target.value as InterviewDifficulty)
+                  setDifficulty(
+                    event.target.value as InterviewDifficulty
+                  )
                 }
                 className={inputClass}
                 disabled={submitting}
               >
-                <option value="beginner">Beginner</option>
-                <option value="intermediate">Intermediate</option>
-                <option value="advanced">Advanced</option>
+                <option value="beginner">
+                  Beginner
+                </option>
+
+                <option value="intermediate">
+                  Intermediate
+                </option>
+
+                <option value="advanced">
+                  Advanced
+                </option>
               </select>
             </div>
 
+            {/* INTERVIEW DURATION */}
+
             <div>
-              <label htmlFor="duration" className="text-sm font-semibold">
+              <label
+                htmlFor="duration"
+                className="text-sm font-semibold"
+              >
                 Interview duration
               </label>
+
               <select
                 id="duration"
                 value={duration}
-                onChange={(event) => setDuration(event.target.value)}
+                onChange={(event) =>
+                  setDuration(event.target.value)
+                }
                 className={inputClass}
                 disabled={submitting}
               >
@@ -297,14 +570,24 @@ export default function InterviewSetupPage({
               </select>
             </div>
 
+            {/* ================================================= */}
+            {/* SAMPLE QUESTIONS PREVIEW */}
+            {/* ================================================= */}
+
             <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-5">
+
               <div className="mb-3 flex items-center justify-between gap-3">
+
                 <h2 className="text-lg font-bold text-white">
                   Sample questions preview
                 </h2>
+
                 <span className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                  {previewLoading ? "Loading..." : `${previewQuestions.length} sample(s)`}
+                  {previewLoading
+                    ? "Loading..."
+                    : `${previewQuestions.length} sample(s)`}
                 </span>
+
               </div>
 
               {previewQuestions.length === 0 ? (
@@ -315,30 +598,47 @@ export default function InterviewSetupPage({
                 </p>
               ) : (
                 <ul className="space-y-3">
+
                   {previewQuestions.map((question, index) => (
                     <li
                       key={`${question.questionText}-${index}`}
                       className="rounded-xl border border-slate-800 bg-slate-900 p-3 text-sm text-slate-200"
                     >
                       <div className="mb-1 flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.14em] text-slate-400">
+
                         <span>{question.category}</span>
+
                         <span>•</span>
+
                         <span>{question.difficulty}</span>
+
                       </div>
-                      <p className="leading-6">{question.questionText}</p>
+
+                      <p className="leading-6">
+                        {question.questionText}
+                      </p>
                     </li>
                   ))}
+
                 </ul>
               )}
+
             </div>
+
+            {/* ================================================= */}
+            {/* START INTERVIEW */}
+            {/* ================================================= */}
 
             <button
               type="submit"
               disabled={submitting || !token}
               className="w-full rounded-xl bg-indigo-600 px-6 py-3.5 font-semibold transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {submitting ? "Creating interview..." : "Start Interview"}
+              {submitting
+                ? "Creating interview..."
+                : "Start Interview"}
             </button>
+
           </form>
         </section>
       </div>

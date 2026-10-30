@@ -89,6 +89,17 @@ export interface InterviewSession {
   evaluation?: InterviewEvaluationSummary | null;
 }
 
+// =========================================================
+// ADAPTIVE DIFFICULTY TYPES
+// =========================================================
+
+export interface AdaptiveDifficultyResult {
+  recommendedDifficulty: InterviewDifficulty;
+  previousAverageScore: number | null;
+  completedInterviewCount: number;
+  reason: string;
+}
+
 interface InterviewApiResponse {
   success: boolean;
   message?: string;
@@ -167,6 +178,7 @@ function normalizeInterview(
 
 // =========================================================
 // CREATE INTERVIEW
+// POST /api/interviews
 // =========================================================
 
 export async function createInterview(
@@ -183,6 +195,7 @@ export async function createInterview(
 
 // =========================================================
 // QUESTION BANK PREVIEW
+// GET /api/interviews/question-bank
 // =========================================================
 
 export async function getQuestionBankPreview(
@@ -216,6 +229,7 @@ export async function getQuestionBankPreview(
 
 // =========================================================
 // GET AN EXISTING INTERVIEW
+// GET /api/interviews/:id
 // =========================================================
 
 export async function getInterview(
@@ -231,7 +245,7 @@ export async function getInterview(
 }
 
 // =========================================================
-// RESPONSE TYPES
+// SAVE ANSWER RESPONSE TYPES
 // =========================================================
 
 export interface SaveAnswerResponse {
@@ -348,7 +362,36 @@ export interface SkillGapSummary {
 }
 
 // =========================================================
-// API FUNCTIONS
+// ADAPTIVE DIFFICULTY RECOMMENDATION
+// GET /api/interviews/adaptive-difficulty
+// =========================================================
+
+export async function getAdaptiveDifficulty(
+  token: string
+): Promise<AdaptiveDifficultyResult> {
+  const data = await requestInterviewApi(
+    "/adaptive-difficulty",
+    token,
+    {
+      method: "GET",
+    }
+  );
+
+  if (
+    !data.recommendation ||
+    typeof data.recommendation !== "object"
+  ) {
+    throw new Error(
+      "Invalid adaptive difficulty response."
+    );
+  }
+
+  return data.recommendation as AdaptiveDifficultyResult;
+}
+
+// =========================================================
+// GET INTERVIEW HISTORY
+// GET /api/interviews/history
 // =========================================================
 
 export async function getInterviewHistory(
@@ -365,6 +408,11 @@ export async function getInterviewHistory(
   return data.interviews as InterviewHistoryItem[];
 }
 
+// =========================================================
+// GET INTERVIEW READINESS
+// GET /api/interviews/readiness
+// =========================================================
+
 export async function getInterviewReadiness(
   token: string
 ): Promise<InterviewReadinessSummary> {
@@ -379,6 +427,11 @@ export async function getInterviewReadiness(
   return data.readiness as InterviewReadinessSummary;
 }
 
+// =========================================================
+// GET SKILL GAPS
+// GET /api/interviews/skill-gaps
+// =========================================================
+
 export async function getSkillGaps(
   token: string
 ): Promise<SkillGapSummary[]> {
@@ -392,6 +445,11 @@ export async function getSkillGaps(
 
   return data.skillGaps as SkillGapSummary[];
 }
+
+// =========================================================
+// EVALUATE INTERVIEW
+// POST /api/interviews/:id/evaluate
+// =========================================================
 
 export async function evaluateInterview(
   token: string,

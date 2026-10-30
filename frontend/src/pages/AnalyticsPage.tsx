@@ -240,10 +240,10 @@ export default function AnalyticsPage({ token }: AnalyticsPageProps) {
 
   const trendData = useMemo(() => {
     const sorted = [...completedInterviews].sort(
-      (a, b) =>
-        new Date(a.createdAt).getTime() -
-        new Date(b.createdAt).getTime()
-    );
+  (a, b) =>
+    new Date(a.completedAt ?? a.createdAt).getTime() -
+    new Date(b.completedAt ?? b.createdAt).getTime()
+);
 
     return sorted.map((item) => ({
       label: new Date(item.createdAt).toLocaleDateString(
@@ -862,12 +862,12 @@ export default function AnalyticsPage({ token }: AnalyticsPageProps) {
           </button>
 
           <button
-            type="button"
-            onClick={() => navigate("/history")}
-            className="rounded-xl border border-slate-700 px-5 py-3 font-semibold hover:border-indigo-400"
-          >
-            View Interview History
-          </button>
+  type="button"
+  onClick={() => navigate("/interview/history")}
+  className="rounded-xl border border-slate-700 px-5 py-3 font-semibold hover:border-indigo-400"
+>
+  View Interview History
+</button>
         </div>
       </div>
     </main>

@@ -9,6 +9,7 @@ import { User } from "../models/User";
 import { evaluateCompletedInterview } from "../services/interviewEvaluationService";
 import { estimateInterviewReadiness } from "../services/interviewReadinessService";
 import { summarizeSkillGaps } from "../services/skillGapService";
+import { recommendAdaptiveDifficulty } from "../services/adaptiveDifficultyService";
 import {
   generateQuestionSet,
   seedDefaultQuestionBank,
@@ -591,6 +592,46 @@ router.get(
     }
   }
 );
+
+
+// =========================================================
+// GET ADAPTIVE INTERVIEW DIFFICULTY
+// GET /api/interviews/adaptive-difficulty
+// =========================================================
+
+router.get(
+  "/adaptive-difficulty",
+  authenticateRequest,
+  async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      if (!req.userId) {
+        res.status(401).json({
+          success: false,
+          message: "Authentication required.",
+        });
+        return;
+      }
+
+      const recommendation = await recommendAdaptiveDifficulty(
+        req.userId
+      );
+
+      res.status(200).json({
+        success: true,
+        message: "Adaptive difficulty recommendation generated.",
+        recommendation,
+      });
+    } catch (error) {
+      console.error("Adaptive difficulty error:", error);
+
+      res.status(500).json({
+        success: false,
+        message: "Unable to calculate adaptive difficulty.",
+      });
+    }
+  }
+);
+
 
 // =========================================================
 // GET A SINGLE INTERVIEW

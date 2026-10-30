@@ -1,4 +1,5 @@
-import mongoose, { Schema, type Document, type Model } from "mongoose";
+
+import mongoose, { Schema, type Model } from "mongoose";
 
 export type QuestionBankCategory =
   | "technical"
@@ -8,17 +9,22 @@ export type QuestionBankCategory =
   | "situational"
   | "coding";
 
-export type QuestionBankDifficulty = "beginner" | "intermediate" | "advanced";
+export type QuestionBankDifficulty =
+  | "beginner"
+  | "intermediate"
+  | "advanced";
 
-export interface IQuestionBankItem extends Document {
+// Keep this as a plain interface.
+// Mongoose 9 supplies document methods through Model, so do not extend Document.
+export interface IQuestionBankItem {
   category: QuestionBankCategory;
   difficulty: QuestionBankDifficulty;
   questionText: string;
   skills: string[];
   expectedConcepts: string[];
   roleContext?: string;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 const questionBankItemSchema = new Schema<IQuestionBankItem>(
@@ -44,7 +50,8 @@ const questionBankItemSchema = new Schema<IQuestionBankItem>(
       type: [String],
       default: [],
       validate: {
-        validator: (value: string[]) => value.every((skill) => skill.trim().length > 0),
+        validator: (value: string[]) =>
+          value.every((skill) => skill.trim().length > 0),
         message: "Skills must be non-empty strings.",
       },
     },
@@ -73,4 +80,7 @@ questionBankItemSchema.index({ category: 1, difficulty: 1 });
 
 export const QuestionBankItem: Model<IQuestionBankItem> =
   (mongoose.models.QuestionBankItem as Model<IQuestionBankItem>) ||
-  mongoose.model<IQuestionBankItem>("QuestionBankItem", questionBankItemSchema);
+  mongoose.model<IQuestionBankItem>(
+    "QuestionBankItem",
+    questionBankItemSchema
+  );
