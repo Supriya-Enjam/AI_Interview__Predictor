@@ -21,6 +21,10 @@ export default function InterviewResultsPage({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // =========================================================
+  // LOAD INTERVIEW AND EVALUATION
+  // =========================================================
+
   useEffect(() => {
     let active = true;
 
@@ -36,30 +40,22 @@ export default function InterviewResultsPage({
 
         if (!active) return;
 
-        if (result.status === "completed" && !result.evaluation) {
-          try {
-            const evaluation = await evaluateInterview(token, id);
-
-            if (active) {
-              setInterview({
-                ...result,
-                evaluation,
-              });
-            }
-            return;
-          } catch (evaluationError) {
-            if (active) {
-              setError(
-                evaluationError instanceof Error
-                  ? evaluationError.message
-                  : "Unable to generate an interview evaluation."
-              );
-            }
-            return;
-          }
+        if (result.status !== "completed") {
+          setInterview(result);
+          return;
         }
 
-        if (active) {
+        // Generate evaluation if it does not exist.
+        if (!result.evaluation) {
+          const evaluation = await evaluateInterview(token, id);
+
+          if (!active) return;
+
+          setInterview({
+            ...result,
+            evaluation,
+          });
+        } else {
           setInterview(result);
         }
       } catch (err) {
@@ -71,7 +67,9 @@ export default function InterviewResultsPage({
           );
         }
       } finally {
-        if (active) setLoading(false);
+        if (active) {
+          setLoading(false);
+        }
       }
     }
 
@@ -82,24 +80,42 @@ export default function InterviewResultsPage({
     };
   }, [token, id]);
 
+  // =========================================================
+  // LOADING
+  // =========================================================
+
   if (loading) {
     return (
-      <main className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-6">
-        <p>Loading interview results...</p>
+      <main className="flex min-h-screen items-center justify-center bg-slate-950 p-6 text-white">
+        <div className="text-center">
+          <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-slate-700 border-t-indigo-500" />
+          <p className="mt-5 text-slate-300">
+            Generating your interview results...
+          </p>
+        </div>
       </main>
     );
   }
 
+  // =========================================================
+  // ERROR
+  // =========================================================
+
   if (error || !interview) {
     return (
-      <main className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center gap-4 p-6">
-        <h1 className="text-2xl font-bold">Unable to load results</h1>
-        <p className="text-slate-300 text-center">
+      <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-950 p-6 text-white">
+        <h1 className="text-2xl font-bold">
+          Unable to load results
+        </h1>
+
+        <p className="max-w-lg text-center text-slate-300">
           {error || "Interview details could not be found."}
         </p>
+
         <button
+          type="button"
           onClick={() => navigate("/dashboard")}
-          className="rounded-lg bg-indigo-600 px-5 py-3 font-semibold hover:bg-indigo-500"
+          className="rounded-xl bg-indigo-600 px-5 py-3 font-semibold hover:bg-indigo-500"
         >
           Back to Dashboard
         </button>
@@ -107,63 +123,105 @@ export default function InterviewResultsPage({
     );
   }
 
-  const answeredCount = interview.questions.filter(
+  // =========================================================
+  // DERIVED DATA
+  // =========================================================
+
+  const questions = interview.questions
+    .slice()
+    .sort((a, b) => a.order - b.order);
+
+  const answeredCount = questions.filter(
     (question) => Boolean(question.answer?.trim())
   ).length;
 
-  const completed =
-    interview.status === "completed" &&
-    answeredCount === interview.questions.length;
+  const completed = interview.status === "completed";
+
+  const evaluation = interview.evaluation;
+
+  const percentage = evaluation
+    ? Math.max(0, Math.min(100, evaluation.percentage))
+    : 0;
+
+  // =========================================================
+  // MAIN RESULTS PAGE
+  // =========================================================
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 px-4 py-10">
-      <div className="mx-auto max-w-4xl">
-        <button
-          onClick={() => navigate("/dashboard")}
-          className="mb-6 text-indigo-300 hover:text-indigo-200"
-        >
-          ← Back to Dashboard
-        </button>
+    <main className="min-h-screen bg-slate-950 px-4 py-10 text-slate-100 sm:px-8">
+      <div className="mx-auto max-w-5xl">
 
-        <header className="rounded-2xl border border-slate-700 bg-slate-900 p-6 md:p-8">
+        {/* HEADER */}
+
+        <header className="mb-8 flex flex-wrap items-center justify-between gap-4">
+          <button
+            type="button"
+            onClick={() => navigate("/dashboard")}
+            className="text-xl font-extrabold"
+          >
+            Interview<span className="text-indigo-400">IQ</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate("/dashboard")}
+            className="rounded-xl border border-slate-700 px-4 py-2 text-sm hover:border-indigo-400"
+          >
+            ← Dashboard
+          </button>
+        </header>
+
+        {/* INTERVIEW SUMMARY */}
+
+        <section className="rounded-3xl border border-slate-800 bg-slate-900 p-6 sm:p-8">
           <p className="text-sm font-semibold uppercase tracking-widest text-indigo-300">
             InterviewIQ · Interview Summary
           </p>
 
-          <h1 className="mt-3 text-3xl font-bold md:text-4xl">
+          <h1 className="mt-3 text-3xl font-extrabold sm:text-4xl">
             {completed ? "Interview Completed!" : "Interview Review"}
           </h1>
 
-          <p className="mt-3 text-slate-300">
-            Review your interview questions and submitted answers below.
+          <p className="mt-3 leading-7 text-slate-400">
+            Review your interview performance, answers, and evaluation.
           </p>
 
-          <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <SummaryItem label="Target Role" value={interview.targetRole} />
+          <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <SummaryItem
+              label="Target Role"
+              value={interview.targetRole}
+            />
+
             <SummaryItem
               label="Category"
               value={capitalize(interview.category)}
             />
+
             <SummaryItem
               label="Difficulty"
               value={capitalize(interview.difficulty)}
             />
+
             <SummaryItem
               label="Duration"
               value={`${interview.duration} minutes`}
             />
           </div>
-        </header>
+        </section>
 
-        <section className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {/* INTERVIEW STATUS */}
+
+        <section className="mt-6 grid gap-4 sm:grid-cols-3">
           <SummaryItem
             label="Interview Status"
             value={capitalize(interview.status.replace("_", " "))}
           />
+
           <SummaryItem
             label="Questions Answered"
-            value={`${answeredCount} / ${interview.questions.length}`}
+            value={`${answeredCount} / ${questions.length}`}
           />
+
           <SummaryItem
             label="Completion Date"
             value={
@@ -174,160 +232,332 @@ export default function InterviewResultsPage({
           />
         </section>
 
-        <section className="mt-8">
-          <h2 className="text-2xl font-bold">Question & Answer Review</h2>
+        {/* INCOMPLETE INTERVIEW */}
 
-          <div className="mt-4 space-y-5">
-            {interview.questions
-              .slice()
-              .sort((a, b) => a.order - b.order)
-              .map((question, index) => (
-                <article
-                  key={question.questionId}
-                  className="rounded-2xl border border-slate-700 bg-slate-900 p-5 md:p-6"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <p className="text-sm font-semibold text-indigo-300">
-                      Question {index + 1}
-                    </p>
-                    <span className="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-300">
-                      {capitalize(question.category)}
-                    </span>
-                  </div>
+        {!completed && (
+          <section className="mt-8 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-6">
+            <h2 className="text-xl font-bold text-amber-300">
+              Interview not completed
+            </h2>
 
-                  <h3 className="mt-3 text-lg font-semibold leading-relaxed">
-                    {question.questionText}
-                  </h3>
+            <p className="mt-2 leading-7 text-slate-300">
+              Complete all interview questions before viewing your final
+              performance evaluation.
+            </p>
 
-                  <div className="mt-5 rounded-xl bg-slate-800/70 p-4">
-                    <p className="text-sm font-semibold text-slate-300">
-                      Your Answer
-                    </p>
+            <button
+              type="button"
+              onClick={() =>
+                navigate(`/interview/${encodeURIComponent(interview.id)}`)
+              }
+              className="mt-5 rounded-xl bg-amber-600 px-5 py-3 font-semibold text-white hover:bg-amber-500"
+            >
+              Continue Interview
+            </button>
+          </section>
+        )}
 
-                    {question.answer?.trim() ? (
-                      <p className="mt-2 whitespace-pre-wrap leading-relaxed text-slate-100">
-                        {question.answer}
-                      </p>
-                    ) : (
-                      <p className="mt-2 italic text-amber-300">
-                        No saved answer for this question.
-                      </p>
-                    )}
-                  </div>
+        {/* OVERALL EVALUATION */}
 
-                  {question.answeredAt && (
-                    <p className="mt-3 text-xs text-slate-400">
-                      Saved: {new Date(question.answeredAt).toLocaleString()}
-                    </p>
-                  )}
-                </article>
-              ))}
-          </div>
-        </section>
+        {completed && evaluation && (
+          <section className="mt-8 rounded-3xl border border-indigo-500/30 bg-slate-900 p-6 sm:p-8">
 
-        {interview.evaluation && (
-          <section className="mt-8 rounded-2xl border border-indigo-500/30 bg-indigo-500/10 p-5 md:p-6">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-xl font-bold text-indigo-200">
-                Performance Evaluation
-              </h2>
-              <span className="rounded-full bg-indigo-500/20 px-3 py-1 text-sm font-semibold text-indigo-200">
-                {interview.evaluation.percentage}%
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-widest text-indigo-300">
+                  Performance Evaluation
+                </p>
+
+                <h2 className="mt-2 text-2xl font-extrabold">
+                  Your Overall Performance
+                </h2>
+              </div>
+
+              <span className="rounded-full bg-indigo-500/15 px-4 py-2 text-lg font-bold text-indigo-300">
+                {percentage.toFixed(1)}%
               </span>
             </div>
 
-            <div className="mt-4 grid gap-4 md:grid-cols-3">
-              <SummaryItem
-                label="Overall score"
-                value={`${interview.evaluation.overallScore}/${interview.evaluation.maxScore}`}
-              />
-              <SummaryItem
-                label="Method"
-                value={capitalize(interview.evaluation.evaluationMethod)}
-              />
-              <SummaryItem
-                label="Evaluated"
-                value={new Date(interview.evaluation.evaluatedAt).toLocaleString()}
-              />
-            </div>
+            {/* SCORE */}
 
-            <p className="mt-5 text-base leading-7 text-slate-200">
-              {interview.evaluation.summary}
-            </p>
+            <div className="mt-8 flex flex-col items-center gap-6 sm:flex-row">
 
-            <div className="mt-6 grid gap-5 md:grid-cols-2">
-              <div className="rounded-xl border border-slate-700 bg-slate-900 p-4">
-                <h3 className="text-sm font-semibold uppercase tracking-widest text-emerald-300">
-                  Strengths
-                </h3>
-                <ul className="mt-3 space-y-2 text-sm text-slate-300">
-                  {(interview.evaluation.strengths.length > 0
-                    ? interview.evaluation.strengths
-                    : ["No clear strengths were identified in this rubric."]
-                  ).map((strength) => (
-                    <li key={strength}>• {strength}</li>
-                  ))}
-                </ul>
+              <div className="flex h-44 w-44 shrink-0 flex-col items-center justify-center rounded-full border-8 border-indigo-500/30 bg-indigo-500/10">
+                <span className="text-4xl font-extrabold text-white">
+                  {evaluation.overallScore}
+                </span>
+
+                <span className="mt-1 text-sm text-slate-400">
+                  out of {evaluation.maxScore}
+                </span>
+
+                <span className="mt-2 text-xs font-semibold text-indigo-300">
+                  Overall Score
+                </span>
               </div>
 
-              <div className="rounded-xl border border-slate-700 bg-slate-900 p-4">
-                <h3 className="text-sm font-semibold uppercase tracking-widest text-amber-300">
-                  Improvements
-                </h3>
-                <ul className="mt-3 space-y-2 text-sm text-slate-300">
-                  {(interview.evaluation.improvements.length > 0
-                    ? interview.evaluation.improvements
-                    : ["This evaluation did not identify specific improvement areas."]
-                  ).map((improvement) => (
-                    <li key={improvement}>• {improvement}</li>
-                  ))}
-                </ul>
+              <div className="w-full">
+                <div className="flex justify-between text-sm">
+                  <span className="font-semibold text-slate-300">
+                    Performance Progress
+                  </span>
+
+                  <span className="text-indigo-300">
+                    {percentage.toFixed(1)}%
+                  </span>
+                </div>
+
+                <div className="mt-3 h-4 overflow-hidden rounded-full bg-slate-800">
+                  <div
+                    className="h-full rounded-full bg-indigo-500 transition-all duration-700"
+                    style={{ width: `${percentage}%` }}
+                  />
+                </div>
+
+                <p className="mt-5 leading-7 text-slate-300">
+                  {evaluation.summary}
+                </p>
+
+                <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-400">
+                  <span className="rounded-full bg-slate-800 px-3 py-2">
+                    Method: {capitalize(evaluation.evaluationMethod)}
+                  </span>
+
+                  <span className="rounded-full bg-slate-800 px-3 py-2">
+                    Evaluated:{" "}
+                    {new Date(evaluation.evaluatedAt).toLocaleString()}
+                  </span>
+                </div>
               </div>
-            </div>
-
-            <div className="mt-6 space-y-4">
-              {interview.evaluation.questionEvaluations.map((result, index) => (
-                <article
-                  key={result.questionId}
-                  className="rounded-xl border border-slate-700 bg-slate-900 p-4"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <p className="text-sm font-semibold text-indigo-300">
-                      Question {index + 1}
-                    </p>
-                    <span className="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-300">
-                      {result.score}/{result.maxScore}
-                    </span>
-                  </div>
-
-                  <p className="mt-3 text-sm leading-6 text-slate-200">
-                    {result.feedback}
-                  </p>
-                </article>
-              ))}
             </div>
           </section>
         )}
 
-        <div className="mt-8 flex flex-wrap gap-3">
+        {/* STRENGTHS AND IMPROVEMENTS */}
+
+        {completed && evaluation && (
+          <section className="mt-8 grid gap-5 md:grid-cols-2">
+
+            <div className="rounded-2xl border border-emerald-500/20 bg-slate-900 p-6">
+              <h2 className="text-lg font-bold text-emerald-300">
+                Your Strengths
+              </h2>
+
+              <ul className="mt-5 space-y-3">
+                {(evaluation.strengths.length > 0
+                  ? evaluation.strengths
+                  : ["No specific strengths were identified."]
+                ).map((strength, index) => (
+                  <li
+                    key={`${strength}-${index}`}
+                    className="flex gap-3 text-sm leading-6 text-slate-300"
+                  >
+                    <span className="text-emerald-400">✓</span>
+                    <span>{strength}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="rounded-2xl border border-amber-500/20 bg-slate-900 p-6">
+              <h2 className="text-lg font-bold text-amber-300">
+                Areas for Improvement
+              </h2>
+
+              <ul className="mt-5 space-y-3">
+                {(evaluation.improvements.length > 0
+                  ? evaluation.improvements
+                  : ["No specific improvement areas were identified."]
+                ).map((improvement, index) => (
+                  <li
+                    key={`${improvement}-${index}`}
+                    className="flex gap-3 text-sm leading-6 text-slate-300"
+                  >
+                    <span className="text-amber-400">!</span>
+                    <span>{improvement}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </section>
+        )}
+
+        {/* QUESTION-WISE EVALUATION */}
+
+        {completed && evaluation && (
+          <section className="mt-8">
+            <h2 className="text-2xl font-extrabold">
+              Question-wise Evaluation
+            </h2>
+
+            <p className="mt-2 text-sm text-slate-400">
+              Review the feedback and scores for each question.
+            </p>
+
+            <div className="mt-5 space-y-4">
+              {evaluation.questionEvaluations.map((result, index) => {
+                const question = questions.find(
+                  (item) => item.questionId === result.questionId
+                );
+
+                return (
+                  <article
+                    key={result.questionId}
+                    className="rounded-2xl border border-slate-800 bg-slate-900 p-5 sm:p-6"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <h3 className="font-bold text-indigo-300">
+                        Question {index + 1}
+                      </h3>
+
+                      <span className="rounded-full bg-indigo-500/10 px-3 py-2 text-sm font-semibold text-indigo-300">
+                        {result.score}/{result.maxScore}
+                      </span>
+                    </div>
+
+                    <p className="mt-3 font-semibold leading-7 text-white">
+                      {question?.questionText ??
+                        `Question ${index + 1}`}
+                    </p>
+
+                    <div className="mt-4 rounded-xl bg-slate-800/70 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">
+                        Feedback
+                      </p>
+
+                      <p className="mt-2 text-sm leading-7 text-slate-200">
+                        {result.feedback}
+                      </p>
+                    </div>
+
+                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                      <div>
+                        <p className="text-sm font-semibold text-emerald-300">
+                          Strengths
+                        </p>
+
+                        <ul className="mt-2 space-y-2 text-sm text-slate-400">
+                          {(result.strengths.length > 0
+                            ? result.strengths
+                            : ["No specific strengths identified."]
+                          ).map((item, itemIndex) => (
+                            <li key={`${item}-${itemIndex}`}>
+                              ✓ {item}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      <div>
+                        <p className="text-sm font-semibold text-amber-300">
+                          Improvements
+                        </p>
+
+                        <ul className="mt-2 space-y-2 text-sm text-slate-400">
+                          {(result.improvements.length > 0
+                            ? result.improvements
+                            : ["No specific improvements identified."]
+                          ).map((item, itemIndex) => (
+                            <li key={`${item}-${itemIndex}`}>
+                              • {item}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* QUESTION AND ANSWER REVIEW */}
+
+        <section className="mt-10">
+          <h2 className="text-2xl font-extrabold">
+            Question & Answer Review
+          </h2>
+
+          <p className="mt-2 text-sm text-slate-400">
+            Review all your submitted interview answers.
+          </p>
+
+          <div className="mt-5 space-y-5">
+            {questions.map((question, index) => (
+              <article
+                key={question.questionId}
+                className="rounded-2xl border border-slate-800 bg-slate-900 p-5 sm:p-6"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-sm font-semibold text-indigo-300">
+                    Question {index + 1}
+                  </p>
+
+                  <span className="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-300">
+                    {capitalize(question.category)}
+                  </span>
+                </div>
+
+                <h3 className="mt-3 text-lg font-semibold leading-relaxed">
+                  {question.questionText}
+                </h3>
+
+                <div className="mt-5 rounded-xl bg-slate-800/70 p-4">
+                  <p className="text-sm font-semibold text-slate-300">
+                    Your Answer
+                  </p>
+
+                  {question.answer?.trim() ? (
+                    <p className="mt-2 whitespace-pre-wrap leading-relaxed text-slate-100">
+                      {question.answer}
+                    </p>
+                  ) : (
+                    <p className="mt-2 italic text-amber-300">
+                      No saved answer for this question.
+                    </p>
+                  )}
+                </div>
+
+                {question.answeredAt && (
+                  <p className="mt-3 text-xs text-slate-500">
+                    Saved:{" "}
+                    {new Date(question.answeredAt).toLocaleString()}
+                  </p>
+                )}
+              </article>
+            ))}
+          </div>
+        </section>
+
+        {/* ACTION BUTTONS */}
+
+        <div className="mt-10 flex flex-wrap gap-3">
           <button
+            type="button"
             onClick={() => navigate("/interview/setup")}
-            className="rounded-lg bg-indigo-600 px-5 py-3 font-semibold hover:bg-indigo-500"
+            className="rounded-xl bg-indigo-600 px-6 py-3 font-semibold hover:bg-indigo-500"
           >
             Start Another Interview
           </button>
 
           <button
+            type="button"
             onClick={() => navigate("/dashboard")}
-            className="rounded-lg border border-slate-600 px-5 py-3 font-semibold hover:bg-slate-800"
+            className="rounded-xl border border-slate-700 px-6 py-3 font-semibold hover:border-indigo-400"
           >
             Go to Dashboard
           </button>
         </div>
+
       </div>
     </main>
   );
 }
+
+// =========================================================
+// REUSABLE SUMMARY ITEM
+// =========================================================
 
 function SummaryItem({
   label,
@@ -339,13 +569,21 @@ function SummaryItem({
   return (
     <div className="rounded-xl border border-slate-700 bg-slate-900 p-4">
       <p className="text-sm text-slate-400">{label}</p>
-      <p className="mt-2 break-words font-semibold text-white">{value}</p>
+
+      <p className="mt-2 break-words font-semibold text-white">
+        {value}
+      </p>
     </div>
   );
 }
 
+// =========================================================
+// TEXT FORMATTING
+// =========================================================
+
 function capitalize(value: string) {
   const normalized = value.toLowerCase();
+
   const specialCases: Record<string, string> = {
     hr: "HR",
     coding: "Coding",

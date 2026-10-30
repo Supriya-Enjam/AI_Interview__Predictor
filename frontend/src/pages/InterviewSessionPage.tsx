@@ -26,12 +26,18 @@ export default function InterviewSessionPage({
   const [error, setError] = useState("");
   const [completed, setCompleted] = useState(false);
 
+  // =========================================================
+  // LOAD INTERVIEW AND RESTORE ANSWERS
+  // =========================================================
+
   useEffect(() => {
     let cancelled = false;
 
     async function loadInterview() {
       if (!token || !id) {
-        setError("Your interview session is missing. Please return to setup.");
+        setError(
+          "Your interview session is missing. Please return to setup."
+        );
         setLoading(false);
         return;
       }
@@ -41,18 +47,30 @@ export default function InterviewSessionPage({
 
         if (cancelled) return;
 
-        if (result.questions.length === 0) {
-          setError("This interview has no questions available.");
-          return;
-        }
-
         if (result.status === "completed") {
           setInterview(result);
           setCompleted(true);
           return;
         }
 
+        if (result.questions.length === 0) {
+          setError("This interview has no questions available.");
+          return;
+        }
+
         setInterview(result);
+
+        // Restore answers already saved in MongoDB.
+        const backendAnswers: Record<string, string> = {};
+
+        result.questions.forEach((question) => {
+          if (question.answer) {
+            backendAnswers[question.questionId] = question.answer;
+          }
+        });
+
+        // Restore answers saved in the browser session.
+        let browserAnswers: Record<string, string> = {};
 
         const savedAnswers = sessionStorage.getItem(
           `interviewiq_answers_${id}`
@@ -60,15 +78,30 @@ export default function InterviewSessionPage({
 
         if (savedAnswers) {
           try {
-            const parsed = JSON.parse(savedAnswers) as Record<
+            browserAnswers = JSON.parse(savedAnswers) as Record<
               string,
               string
             >;
-
-            setAnswers(parsed);
           } catch {
             sessionStorage.removeItem(`interviewiq_answers_${id}`);
           }
+        }
+
+        const mergedAnswers = {
+          ...backendAnswers,
+          ...browserAnswers,
+        };
+
+        setAnswers(mergedAnswers);
+
+        // Save the merged answers locally.
+        try {
+          sessionStorage.setItem(
+            `interviewiq_answers_${id}`,
+            JSON.stringify(mergedAnswers)
+          );
+        } catch {
+          // Backend answers remain available.
         }
       } catch (err) {
         if (!cancelled) {
@@ -92,16 +125,25 @@ export default function InterviewSessionPage({
     };
   }, [token, id]);
 
+  // =========================================================
+  // CURRENT QUESTION AND ANSWER
+  // =========================================================
+
   const questions = interview?.questions ?? [];
+
   const currentQuestion = questions[currentIndex];
+
   const currentAnswer = currentQuestion
     ? answers[currentQuestion.questionId] ?? ""
     : "";
 
-  const answeredCount = questions.filter(
-    (question) =>
-      Boolean(answers[question.questionId]?.trim())
+  const answeredCount = questions.filter((question) =>
+    Boolean(answers[question.questionId]?.trim())
   ).length;
+
+  // =========================================================
+  // UPDATE ANSWER
+  // =========================================================
 
   function updateAnswer(value: string) {
     if (!currentQuestion) return;
@@ -126,8 +168,14 @@ export default function InterviewSessionPage({
     }
   }
 
+  // =========================================================
+  // SAVE CURRENT ANSWER
+  // =========================================================
+
   async function saveCurrentAnswer(): Promise<boolean> {
-    if (!interview || !id || !currentQuestion) return false;
+    if (!interview || !id || !currentQuestion) {
+      return false;
+    }
 
     const answer = currentAnswer.trim();
 
@@ -154,11 +202,16 @@ export default function InterviewSessionPage({
           ? err.message
           : "Unable to save your answer."
       );
+
       return false;
     } finally {
       setSaving(false);
     }
   }
+
+  // =========================================================
+  // NEXT QUESTION
+  // =========================================================
 
   async function handleNext() {
     const saved = await saveCurrentAnswer();
@@ -169,6 +222,10 @@ export default function InterviewSessionPage({
       );
     }
   }
+
+  // =========================================================
+  // COMPLETE INTERVIEW
+  // =========================================================
 
   async function handleComplete(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -184,10 +241,13 @@ export default function InterviewSessionPage({
     });
 
     if (!allAnswered) {
-      setError("Please answer every question before completing the interview.");
+      setError(
+        "Please answer every question before completing the interview."
+      );
       return;
     }
 
+    // Save the final answer first.
     const saved = await saveCurrentAnswer();
 
     if (!saved) return;
@@ -196,22 +256,14 @@ export default function InterviewSessionPage({
     setError("");
 
     try {
-     await completeInterview(token, id);
+      await completeInterview(token, id);
 
-try {
-  sessionStorage.removeItem(`interviewiq_answers_${id}`);
-} catch {
-  // The interview has already been completed.
-}
+      sessionStorage.removeItem(`interviewiq_answers_${id}`);
 
-navigate(`/interview/${encodeURIComponent(id)}/results`);
-return;
-
-      try {
-        sessionStorage.removeItem(`interviewiq_answers_${id}`);
-      } catch {
-        // Completion has already been saved by the backend.
-      }
+      navigate(
+        `/interview/${encodeURIComponent(id)}/results`,
+        { replace: true }
+      );
     } catch (err) {
       setError(
         err instanceof Error
@@ -223,6 +275,10 @@ return;
     }
   }
 
+  // =========================================================
+  // LOADING SCREEN
+  // =========================================================
+
   if (loading) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-200">
@@ -230,6 +286,10 @@ return;
       </main>
     );
   }
+
+  // =========================================================
+  // COMPLETED INTERVIEW SCREEN
+  // =========================================================
 
   if (completed) {
     return (
@@ -254,8 +314,18 @@ return;
 
           <button
             type="button"
-            onClick={() => navigate("/dashboard")}
+            onClick={() =>
+              navigate(`/interview/${encodeURIComponent(id ?? "")}/results`)
+            }
             className="mt-7 w-full rounded-xl bg-indigo-600 px-5 py-3 font-semibold hover:bg-indigo-500"
+          >
+            View interview results
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate("/dashboard")}
+            className="mt-3 w-full rounded-xl border border-slate-700 px-5 py-3 font-semibold hover:border-indigo-400"
           >
             Return to dashboard
           </button>
@@ -264,12 +334,17 @@ return;
     );
   }
 
+  // =========================================================
+  // INTERVIEW NOT FOUND
+  // =========================================================
+
   if (!interview || !currentQuestion) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-950 px-4 text-slate-100">
         <p className="text-red-300">
           {error || "Interview session could not be loaded."}
         </p>
+
         <button
           type="button"
           onClick={() => navigate("/interview/setup")}
@@ -281,9 +356,14 @@ return;
     );
   }
 
+  // =========================================================
+  // MAIN INTERVIEW UI
+  // =========================================================
+
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-8 text-slate-100 sm:px-8">
       <div className="mx-auto max-w-3xl">
+
         <header className="mb-8 flex items-center justify-between gap-4">
           <button
             type="button"
@@ -299,6 +379,9 @@ return;
         </header>
 
         <section className="rounded-3xl border border-slate-800 bg-slate-900 p-6 sm:p-9">
+
+          {/* HEADER AND PROGRESS */}
+
           <div className="flex flex-wrap items-center justify-between gap-3">
             <span className="text-sm font-semibold uppercase tracking-widest text-indigo-300">
               Mock interview
@@ -325,19 +408,26 @@ return;
             />
           </div>
 
+          {/* INTERVIEW DETAILS */}
+
           <div className="mt-6 flex flex-wrap gap-2 text-xs">
             <span className="rounded-full bg-indigo-500/10 px-3 py-1.5 text-indigo-300">
               {interview.category}
             </span>
+
             <span className="rounded-full bg-slate-800 px-3 py-1.5 text-slate-300">
               {interview.difficulty}
             </span>
+
             <span className="rounded-full bg-slate-800 px-3 py-1.5 text-slate-300">
               {interview.duration} minutes
             </span>
           </div>
 
+          {/* QUESTION AND ANSWER FORM */}
+
           <form onSubmit={handleComplete} className="mt-8">
+
             <p className="text-sm font-medium text-slate-400">
               Question {currentQuestion.order} · {currentQuestion.category}
             </p>
@@ -366,9 +456,14 @@ return;
             />
 
             <div className="mt-2 flex justify-between text-xs text-slate-500">
-              <span>Answers are saved to your interview session.</span>
+              <span>
+                Answers are saved to your interview session.
+              </span>
+
               <span>{currentAnswer.length}/10000</span>
             </div>
+
+            {/* ERROR MESSAGE */}
 
             {error && (
               <div
@@ -379,12 +474,17 @@ return;
               </div>
             )}
 
+            {/* NAVIGATION BUTTONS */}
+
             <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
+
               <button
                 type="button"
                 onClick={() => {
                   setError("");
-                  setCurrentIndex((index) => Math.max(index - 1, 0));
+                  setCurrentIndex((index) =>
+                    Math.max(index - 1, 0)
+                  );
                 }}
                 disabled={currentIndex === 0 || saving}
                 className="rounded-xl border border-slate-700 px-5 py-3 font-semibold hover:border-indigo-400 disabled:cursor-not-allowed disabled:opacity-40"
@@ -412,11 +512,15 @@ return;
                     : "Complete Interview"}
                 </button>
               )}
+
             </div>
 
+            {/* ANSWER COUNT */}
+
             <p className="mt-5 text-center text-sm text-slate-500">
-              {answeredCount} of {questions.length} questions answered in this browser
+              {answeredCount} of {questions.length} questions answered
             </p>
+
           </form>
         </section>
       </div>
