@@ -1,4 +1,3 @@
-
 import { Router, type Request, type Response, type NextFunction } from "express";
 import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
@@ -139,7 +138,9 @@ function getAnsweredQuestionCount(
  * Returns null if evaluation fails so the completed interview
  * remains saved and can be evaluated again later.
  */
-async function tryEvaluateInterview(interview: InstanceType<typeof Interview>) {
+async function tryEvaluateInterview(
+  interview: InstanceType<typeof Interview>
+) {
   try {
     const evaluation = evaluateCompletedInterview(interview);
 
@@ -222,6 +223,7 @@ router.post(
         "coding",
       ] as const;
 
+      // Preserve skills and expected concepts from the question bank.
       const questions = generatedQuestions.map((entry, index) => {
         const resolvedCategory =
           entry.category === "mixed"
@@ -238,6 +240,8 @@ router.post(
             | "situational"
             | "coding",
           order: index + 1,
+          skills: entry.skills ?? [],
+          expectedConcepts: entry.expectedConcepts ?? [],
         };
       });
 
@@ -266,6 +270,8 @@ router.post(
             questionText: question.questionText,
             category: question.category,
             order: question.order,
+            skills: question.skills ?? [],
+            expectedConcepts: question.expectedConcepts ?? [],
           })),
           createdAt: interview.createdAt,
         },
@@ -633,6 +639,8 @@ router.get(
             questionText: question.questionText,
             category: question.category,
             order: question.order,
+            skills: question.skills ?? [],
+            expectedConcepts: question.expectedConcepts ?? [],
             answer: question.answer ?? "",
             answeredAt: question.answeredAt ?? null,
             answered: Boolean(question.answer?.trim()),

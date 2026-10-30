@@ -34,8 +34,10 @@ export interface CreateInterviewRequest {
 export interface InterviewQuestion {
   questionId: string;
   questionText: string;
-  category: "technical" | "behavioral";
+  category: InterviewCategory;
   order: number;
+  skills?: string[];
+  expectedConcepts?: string[];
   answer?: string;
   answeredAt?: string;
 }
@@ -56,6 +58,9 @@ export interface QuestionEvaluationSummary {
   feedback: string;
   strengths: string[];
   improvements: string[];
+  matchedConcepts: string[];
+  missingConcepts: string[];
+  conceptCoverage: number;
 }
 
 export interface InterviewEvaluationSummary {
@@ -176,6 +181,10 @@ export async function createInterview(
   return normalizeInterview(data);
 }
 
+// =========================================================
+// QUESTION BANK PREVIEW
+// =========================================================
+
 export async function getQuestionBankPreview(
   token: string,
   payload: {
@@ -221,6 +230,9 @@ export async function getInterview(
   return normalizeInterview(data);
 }
 
+// =========================================================
+// RESPONSE TYPES
+// =========================================================
 
 export interface SaveAnswerResponse {
   success: boolean;
@@ -286,7 +298,9 @@ export async function completeInterview(
   return data as unknown as CompleteInterviewResponse;
 }
 
-
+// =========================================================
+// INTERVIEW HISTORY
+// =========================================================
 
 export interface InterviewHistoryItem {
   id: string;
@@ -303,6 +317,10 @@ export interface InterviewHistoryItem {
   evaluation?: InterviewEvaluationSummary | null;
 }
 
+// =========================================================
+// INTERVIEW READINESS
+// =========================================================
+
 export interface InterviewReadinessSummary {
   score: number;
   label: string;
@@ -315,6 +333,10 @@ export interface InterviewReadinessSummary {
   method: string;
 }
 
+// =========================================================
+// SKILL GAP ANALYSIS
+// =========================================================
+
 export interface SkillGapSummary {
   skill: string;
   assessments: number;
@@ -324,6 +346,10 @@ export interface SkillGapSummary {
   weakAreas: string[];
   recommendedPractice: string[];
 }
+
+// =========================================================
+// API FUNCTIONS
+// =========================================================
 
 export async function getInterviewHistory(
   token: string

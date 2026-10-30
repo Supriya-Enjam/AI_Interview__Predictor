@@ -21,10 +21,6 @@ export default function InterviewResultsPage({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // =========================================================
-  // LOAD INTERVIEW AND EVALUATION
-  // =========================================================
-
   useEffect(() => {
     let active = true;
 
@@ -45,7 +41,6 @@ export default function InterviewResultsPage({
           return;
         }
 
-        // Generate evaluation if it does not exist.
         if (!result.evaluation) {
           const evaluation = await evaluateInterview(token, id);
 
@@ -67,9 +62,7 @@ export default function InterviewResultsPage({
           );
         }
       } finally {
-        if (active) {
-          setLoading(false);
-        }
+        if (active) setLoading(false);
       }
     }
 
@@ -79,10 +72,6 @@ export default function InterviewResultsPage({
       active = false;
     };
   }, [token, id]);
-
-  // =========================================================
-  // LOADING
-  // =========================================================
 
   if (loading) {
     return (
@@ -97,21 +86,13 @@ export default function InterviewResultsPage({
     );
   }
 
-  // =========================================================
-  // ERROR
-  // =========================================================
-
   if (error || !interview) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-950 p-6 text-white">
-        <h1 className="text-2xl font-bold">
-          Unable to load results
-        </h1>
-
+        <h1 className="text-2xl font-bold">Unable to load results</h1>
         <p className="max-w-lg text-center text-slate-300">
           {error || "Interview details could not be found."}
         </p>
-
         <button
           type="button"
           onClick={() => navigate("/dashboard")}
@@ -123,36 +104,49 @@ export default function InterviewResultsPage({
     );
   }
 
-  // =========================================================
-  // DERIVED DATA
-  // =========================================================
-
   const questions = interview.questions
     .slice()
     .sort((a, b) => a.order - b.order);
 
-  const answeredCount = questions.filter(
-    (question) => Boolean(question.answer?.trim())
+  const answeredCount = questions.filter((question) =>
+    Boolean(question.answer?.trim())
   ).length;
 
   const completed = interview.status === "completed";
-
   const evaluation = interview.evaluation;
 
   const percentage = evaluation
     ? Math.max(0, Math.min(100, evaluation.percentage))
     : 0;
 
-  // =========================================================
-  // MAIN RESULTS PAGE
-  // =========================================================
+  const allExpectedConcepts = questions.reduce(
+    (total, question) =>
+      total + (question.expectedConcepts?.length ?? 0),
+    0
+  );
+
+  const questionResults = evaluation?.questionEvaluations ?? [];
+
+  const matchedConceptCount = questionResults.reduce(
+    (total, result) => total + (result.matchedConcepts?.length ?? 0),
+    0
+  );
+
+  const missingConceptCount = questionResults.reduce(
+    (total, result) => total + (result.missingConcepts?.length ?? 0),
+    0
+  );
+
+  const overallConceptCoverage =
+    matchedConceptCount + missingConceptCount > 0
+      ? (matchedConceptCount /
+          (matchedConceptCount + missingConceptCount)) *
+        100
+      : 0;
 
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-10 text-slate-100 sm:px-8">
       <div className="mx-auto max-w-5xl">
-
-        {/* HEADER */}
-
         <header className="mb-8 flex flex-wrap items-center justify-between gap-4">
           <button
             type="button"
@@ -187,21 +181,15 @@ export default function InterviewResultsPage({
           </p>
 
           <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <SummaryItem
-              label="Target Role"
-              value={interview.targetRole}
-            />
-
+            <SummaryItem label="Target Role" value={interview.targetRole} />
             <SummaryItem
               label="Category"
               value={capitalize(interview.category)}
             />
-
             <SummaryItem
               label="Difficulty"
               value={capitalize(interview.difficulty)}
             />
-
             <SummaryItem
               label="Duration"
               value={`${interview.duration} minutes`}
@@ -232,8 +220,6 @@ export default function InterviewResultsPage({
           />
         </section>
 
-        {/* INCOMPLETE INTERVIEW */}
-
         {!completed && (
           <section className="mt-8 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-6">
             <h2 className="text-xl font-bold text-amber-300">
@@ -260,216 +246,366 @@ export default function InterviewResultsPage({
         {/* OVERALL EVALUATION */}
 
         {completed && evaluation && (
-          <section className="mt-8 rounded-3xl border border-indigo-500/30 bg-slate-900 p-6 sm:p-8">
+          <>
+            <section className="mt-8 rounded-3xl border border-indigo-500/30 bg-slate-900 p-6 sm:p-8">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-widest text-indigo-300">
+                    Performance Evaluation
+                  </p>
 
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-widest text-indigo-300">
-                  Performance Evaluation
-                </p>
+                  <h2 className="mt-2 text-2xl font-extrabold">
+                    Your Overall Performance
+                  </h2>
+                </div>
 
-                <h2 className="mt-2 text-2xl font-extrabold">
-                  Your Overall Performance
-                </h2>
-              </div>
-
-              <span className="rounded-full bg-indigo-500/15 px-4 py-2 text-lg font-bold text-indigo-300">
-                {percentage.toFixed(1)}%
-              </span>
-            </div>
-
-            {/* SCORE */}
-
-            <div className="mt-8 flex flex-col items-center gap-6 sm:flex-row">
-
-              <div className="flex h-44 w-44 shrink-0 flex-col items-center justify-center rounded-full border-8 border-indigo-500/30 bg-indigo-500/10">
-                <span className="text-4xl font-extrabold text-white">
-                  {evaluation.overallScore}
-                </span>
-
-                <span className="mt-1 text-sm text-slate-400">
-                  out of {evaluation.maxScore}
-                </span>
-
-                <span className="mt-2 text-xs font-semibold text-indigo-300">
-                  Overall Score
+                <span className="rounded-full bg-indigo-500/15 px-4 py-2 text-lg font-bold text-indigo-300">
+                  {percentage.toFixed(1)}%
                 </span>
               </div>
 
-              <div className="w-full">
-                <div className="flex justify-between text-sm">
-                  <span className="font-semibold text-slate-300">
-                    Performance Progress
+              <div className="mt-8 flex flex-col items-center gap-6 sm:flex-row">
+                <div className="flex h-44 w-44 shrink-0 flex-col items-center justify-center rounded-full border-8 border-indigo-500/30 bg-indigo-500/10">
+                  <span className="text-4xl font-extrabold text-white">
+                    {evaluation.overallScore}
                   </span>
 
-                  <span className="text-indigo-300">
-                    {percentage.toFixed(1)}%
+                  <span className="mt-1 text-xs text-slate-400">
+                    {evaluation.questionEvaluations.length} questions evaluated
+                  </span>
+
+                  <span className="mt-1 text-sm text-slate-400">
+                    out of {evaluation.maxScore}
+                  </span>
+
+                  <span className="mt-2 text-xs font-semibold text-indigo-300">
+                    Overall Score
                   </span>
                 </div>
 
-                <div className="mt-3 h-4 overflow-hidden rounded-full bg-slate-800">
-                  <div
-                    className="h-full rounded-full bg-indigo-500 transition-all duration-700"
-                    style={{ width: `${percentage}%` }}
-                  />
-                </div>
+                <div className="w-full">
+                  <div className="flex justify-between text-sm">
+                    <span className="font-semibold text-slate-300">
+                      Performance Progress
+                    </span>
 
-                <p className="mt-5 leading-7 text-slate-300">
-                  {evaluation.summary}
-                </p>
+                    <span className="text-indigo-300">
+                      {percentage.toFixed(1)}%
+                    </span>
+                  </div>
 
-                <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-400">
-                  <span className="rounded-full bg-slate-800 px-3 py-2">
-                    Method: {capitalize(evaluation.evaluationMethod)}
-                  </span>
+                  <div className="mt-3 h-4 overflow-hidden rounded-full bg-slate-800">
+                    <div
+                      className="h-full rounded-full bg-indigo-500 transition-all duration-700"
+                      style={{ width: `${percentage}%` }}
+                    />
+                  </div>
 
-                  <span className="rounded-full bg-slate-800 px-3 py-2">
-                    Evaluated:{" "}
-                    {new Date(evaluation.evaluatedAt).toLocaleString()}
-                  </span>
+                  <p className="mt-5 leading-7 text-slate-300">
+                    {evaluation.summary}
+                  </p>
+
+                  <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-400">
+                    <span className="rounded-full bg-slate-800 px-3 py-2">
+                      Method: {capitalize(evaluation.evaluationMethod)}
+                    </span>
+
+                    <span className="rounded-full bg-slate-800 px-3 py-2">
+                      Evaluated:{" "}
+                      {new Date(evaluation.evaluatedAt).toLocaleString()}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
-          </section>
-        )}
+            </section>
 
-        {/* STRENGTHS AND IMPROVEMENTS */}
+            {/* EXPECTED CONCEPT OVERVIEW */}
 
-        {completed && evaluation && (
-          <section className="mt-8 grid gap-5 md:grid-cols-2">
+            <section className="mt-8 rounded-3xl border border-cyan-500/20 bg-slate-900 p-6 sm:p-8">
+              <p className="text-sm font-semibold uppercase tracking-widest text-cyan-300">
+                Technical Knowledge Analysis
+              </p>
 
-            <div className="rounded-2xl border border-emerald-500/20 bg-slate-900 p-6">
-              <h2 className="text-lg font-bold text-emerald-300">
-                Your Strengths
+              <h2 className="mt-2 text-2xl font-extrabold">
+                Expected Concept Coverage
               </h2>
 
-              <ul className="mt-5 space-y-3">
-                {(evaluation.strengths.length > 0
-                  ? evaluation.strengths
-                  : ["No specific strengths were identified."]
-                ).map((strength, index) => (
-                  <li
-                    key={`${strength}-${index}`}
-                    className="flex gap-3 text-sm leading-6 text-slate-300"
-                  >
-                    <span className="text-emerald-400">✓</span>
-                    <span>{strength}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+              <p className="mt-2 text-sm leading-6 text-slate-400">
+                This analysis compares the concepts identified in your answers
+                with the expected concepts configured for your interview
+                questions.
+              </p>
 
-            <div className="rounded-2xl border border-amber-500/20 bg-slate-900 p-6">
-              <h2 className="text-lg font-bold text-amber-300">
-                Areas for Improvement
-              </h2>
+              {allExpectedConcepts === 0 ? (
+                <div className="mt-5 rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-200">
+                  No expected concepts were configured for these questions.
+                  Create a new interview with expected concepts to use this
+                  analysis.
+                </div>
+              ) : (
+                <>
+                  <div className="mt-6 grid gap-4 sm:grid-cols-3">
+                    <ConceptSummary
+                      label="Expected Concepts"
+                      value={allExpectedConcepts}
+                      color="text-cyan-300"
+                    />
 
-              <ul className="mt-5 space-y-3">
-                {(evaluation.improvements.length > 0
-                  ? evaluation.improvements
-                  : ["No specific improvement areas were identified."]
-                ).map((improvement, index) => (
-                  <li
-                    key={`${improvement}-${index}`}
-                    className="flex gap-3 text-sm leading-6 text-slate-300"
-                  >
-                    <span className="text-amber-400">!</span>
-                    <span>{improvement}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </section>
-        )}
+                    <ConceptSummary
+                      label="Matched Concepts"
+                      value={matchedConceptCount}
+                      color="text-emerald-300"
+                    />
 
-        {/* QUESTION-WISE EVALUATION */}
+                    <ConceptSummary
+                      label="Missing Concepts"
+                      value={missingConceptCount}
+                      color="text-amber-300"
+                    />
+                  </div>
 
-        {completed && evaluation && (
-          <section className="mt-8">
-            <h2 className="text-2xl font-extrabold">
-              Question-wise Evaluation
-            </h2>
+                  <div className="mt-6">
+                    <div className="flex justify-between text-sm">
+                      <span className="font-semibold text-slate-300">
+                        Overall Concept Coverage
+                      </span>
 
-            <p className="mt-2 text-sm text-slate-400">
-              Review the feedback and scores for each question.
-            </p>
-
-            <div className="mt-5 space-y-4">
-              {evaluation.questionEvaluations.map((result, index) => {
-                const question = questions.find(
-                  (item) => item.questionId === result.questionId
-                );
-
-                return (
-                  <article
-                    key={result.questionId}
-                    className="rounded-2xl border border-slate-800 bg-slate-900 p-5 sm:p-6"
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <h3 className="font-bold text-indigo-300">
-                        Question {index + 1}
-                      </h3>
-
-                      <span className="rounded-full bg-indigo-500/10 px-3 py-2 text-sm font-semibold text-indigo-300">
-                        {result.score}/{result.maxScore}
+                      <span className="font-bold text-cyan-300">
+                        {overallConceptCoverage.toFixed(1)}%
                       </span>
                     </div>
 
-                    <p className="mt-3 font-semibold leading-7 text-white">
-                      {question?.questionText ??
-                        `Question ${index + 1}`}
-                    </p>
-
-                    <div className="mt-4 rounded-xl bg-slate-800/70 p-4">
-                      <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">
-                        Feedback
-                      </p>
-
-                      <p className="mt-2 text-sm leading-7 text-slate-200">
-                        {result.feedback}
-                      </p>
+                    <div className="mt-3 h-4 overflow-hidden rounded-full bg-slate-800">
+                      <div
+                        className="h-full rounded-full bg-cyan-500 transition-all duration-700"
+                        style={{
+                          width: `${overallConceptCoverage}%`,
+                        }}
+                      />
                     </div>
+                  </div>
+                </>
+              )}
+            </section>
 
-                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                      <div>
-                        <p className="text-sm font-semibold text-emerald-300">
-                          Strengths
-                        </p>
+            {/* STRENGTHS AND IMPROVEMENTS */}
 
-                        <ul className="mt-2 space-y-2 text-sm text-slate-400">
-                          {(result.strengths.length > 0
-                            ? result.strengths
-                            : ["No specific strengths identified."]
-                          ).map((item, itemIndex) => (
-                            <li key={`${item}-${itemIndex}`}>
-                              ✓ {item}
-                            </li>
-                          ))}
-                        </ul>
+            <section className="mt-8 grid gap-5 md:grid-cols-2">
+              <div className="rounded-2xl border border-emerald-500/20 bg-slate-900 p-6">
+                <h2 className="text-lg font-bold text-emerald-300">
+                  Your Strengths
+                </h2>
+
+                <ul className="mt-5 space-y-3">
+                  {(evaluation.strengths.length > 0
+                    ? evaluation.strengths
+                    : ["No specific strengths were identified."]
+                  ).map((strength, index) => (
+                    <li
+                      key={`${strength}-${index}`}
+                      className="flex gap-3 text-sm leading-6 text-slate-300"
+                    >
+                      <span className="text-emerald-400">✓</span>
+                      <span>{strength}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="rounded-2xl border border-amber-500/20 bg-slate-900 p-6">
+                <h2 className="text-lg font-bold text-amber-300">
+                  Areas for Improvement
+                </h2>
+
+                <ul className="mt-5 space-y-3">
+                  {(evaluation.improvements.length > 0
+                    ? evaluation.improvements
+                    : ["No specific improvement areas were identified."]
+                  ).map((improvement, index) => (
+                    <li
+                      key={`${improvement}-${index}`}
+                      className="flex gap-3 text-sm leading-6 text-slate-300"
+                    >
+                      <span className="text-amber-400">!</span>
+                      <span>{improvement}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </section>
+
+            {/* QUESTION-WISE EVALUATION */}
+
+            <section className="mt-8">
+              <h2 className="text-2xl font-extrabold">
+                Question-wise Evaluation
+              </h2>
+
+              <p className="mt-2 text-sm text-slate-400">
+                Review your scores, expected concepts, matched concepts, and
+                areas for improvement for every question.
+              </p>
+
+              <div className="mt-5 space-y-4">
+                {evaluation.questionEvaluations.map((result, index) => {
+                  const question = questions.find(
+                    (item) => item.questionId === result.questionId
+                  );
+
+                  const matched = result.matchedConcepts ?? [];
+                  const missing = result.missingConcepts ?? [];
+                  const coverage = Math.max(
+                    0,
+                    Math.min(100, result.conceptCoverage ?? 0)
+                  );
+
+                  return (
+                    <article
+                      key={result.questionId}
+                      className="rounded-2xl border border-slate-800 bg-slate-900 p-5 sm:p-6"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <h3 className="font-bold text-indigo-300">
+                          Question {index + 1}
+                        </h3>
+
+                        <div className="text-right">
+                          <span className="rounded-full bg-indigo-500/10 px-3 py-2 text-sm font-semibold text-indigo-300">
+                            {result.score}/{result.maxScore}
+                          </span>
+
+                          <p className="mt-2 text-xs text-slate-400">
+                            {result.maxScore > 0
+                              ? Math.round(
+                                  (result.score / result.maxScore) * 100
+                                )
+                              : 0}
+                            % score
+                          </p>
+                        </div>
                       </div>
 
-                      <div>
-                        <p className="text-sm font-semibold text-amber-300">
-                          Improvements
+                      <p className="mt-3 font-semibold leading-7 text-white">
+                        {question?.questionText ?? `Question ${index + 1}`}
+                      </p>
+
+                      {/* CONCEPT COVERAGE */}
+
+                      <div className="mt-5 rounded-xl border border-cyan-500/20 bg-slate-800/50 p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <p className="text-sm font-semibold text-cyan-300">
+                            Expected Concept Coverage
+                          </p>
+
+                          <span className="text-sm font-bold text-cyan-300">
+                            {coverage.toFixed(1)}%
+                          </span>
+                        </div>
+
+                        <div className="mt-3 h-3 overflow-hidden rounded-full bg-slate-700">
+                          <div
+                            className="h-full rounded-full bg-cyan-500 transition-all duration-700"
+                            style={{ width: `${coverage}%` }}
+                          />
+                        </div>
+
+                        <div className="mt-3 flex flex-wrap gap-3 text-xs text-slate-400">
+                          <span>
+                            Matched: {matched.length}
+                          </span>
+                          <span>
+                            Missing: {missing.length}
+                          </span>
+                        </div>
+
+                        <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                          <ConceptList
+                            title="Matched Concepts"
+                            concepts={matched}
+                            emptyMessage="No expected concepts were matched."
+                            type="matched"
+                          />
+
+                          <ConceptList
+                            title="Missing Concepts"
+                            concepts={missing}
+                            emptyMessage="No missing concepts identified."
+                            type="missing"
+                          />
+                        </div>
+
+                        {question?.expectedConcepts &&
+                          question.expectedConcepts.length > 0 && (
+                            <div className="mt-5 border-t border-slate-700 pt-4">
+                              <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                                Configured Expected Concepts
+                              </p>
+
+                              <div className="mt-3 flex flex-wrap gap-2">
+                                {question.expectedConcepts.map(
+                                  (concept, conceptIndex) => (
+                                    <span
+                                      key={`${concept}-${conceptIndex}`}
+                                      className="rounded-full bg-slate-700 px-3 py-1.5 text-xs text-slate-200"
+                                    >
+                                      {concept}
+                                    </span>
+                                  )
+                                )}
+                              </div>
+                            </div>
+                          )}
+                      </div>
+
+                      {/* FEEDBACK */}
+
+                      <div className="mt-4 rounded-xl bg-slate-800/70 p-4">
+                        <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">
+                          Feedback
                         </p>
 
-                        <ul className="mt-2 space-y-2 text-sm text-slate-400">
-                          {(result.improvements.length > 0
-                            ? result.improvements
-                            : ["No specific improvements identified."]
-                          ).map((item, itemIndex) => (
-                            <li key={`${item}-${itemIndex}`}>
-                              • {item}
-                            </li>
-                          ))}
-                        </ul>
+                        <p className="mt-2 text-sm leading-7 text-slate-200">
+                          {result.feedback}
+                        </p>
                       </div>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          </section>
+
+                      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                        <div>
+                          <p className="text-sm font-semibold text-emerald-300">
+                            Strengths
+                          </p>
+
+                          <ul className="mt-2 space-y-2 text-sm text-slate-400">
+                            {(result.strengths.length > 0
+                              ? result.strengths
+                              : ["No specific strengths identified."]
+                            ).map((item, itemIndex) => (
+                              <li key={`${item}-${itemIndex}`}>✓ {item}</li>
+                            ))}
+                          </ul>
+                        </div>
+
+                        <div>
+                          <p className="text-sm font-semibold text-amber-300">
+                            Improvements
+                          </p>
+
+                          <ul className="mt-2 space-y-2 text-sm text-slate-400">
+                            {(result.improvements.length > 0
+                              ? result.improvements
+                              : ["No specific improvements identified."]
+                            ).map((item, itemIndex) => (
+                              <li key={`${item}-${itemIndex}`}>• {item}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
+          </>
         )}
 
         {/* QUESTION AND ANSWER REVIEW */}
@@ -521,8 +657,7 @@ export default function InterviewResultsPage({
 
                 {question.answeredAt && (
                   <p className="mt-3 text-xs text-slate-500">
-                    Saved:{" "}
-                    {new Date(question.answeredAt).toLocaleString()}
+                    Saved: {new Date(question.answeredAt).toLocaleString()}
                   </p>
                 )}
               </article>
@@ -549,7 +684,6 @@ export default function InterviewResultsPage({
             Go to Dashboard
           </button>
         </div>
-
       </div>
     </main>
   );
@@ -569,10 +703,80 @@ function SummaryItem({
   return (
     <div className="rounded-xl border border-slate-700 bg-slate-900 p-4">
       <p className="text-sm text-slate-400">{label}</p>
+      <p className="mt-2 break-words font-semibold text-white">{value}</p>
+    </div>
+  );
+}
 
-      <p className="mt-2 break-words font-semibold text-white">
-        {value}
+// =========================================================
+// CONCEPT SUMMARY
+// =========================================================
+
+function ConceptSummary({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: number;
+  color: string;
+}) {
+  return (
+    <div className="rounded-xl border border-slate-700 bg-slate-800/60 p-4">
+      <p className="text-sm text-slate-400">{label}</p>
+      <p className={`mt-2 text-3xl font-extrabold ${color}`}>{value}</p>
+    </div>
+  );
+}
+
+// =========================================================
+// CONCEPT LIST
+// =========================================================
+
+function ConceptList({
+  title,
+  concepts,
+  emptyMessage,
+  type,
+}: {
+  title: string;
+  concepts: string[];
+  emptyMessage: string;
+  type: "matched" | "missing";
+}) {
+  const isMatched = type === "matched";
+
+  return (
+    <div>
+      <p
+        className={`text-sm font-semibold ${
+          isMatched ? "text-emerald-300" : "text-amber-300"
+        }`}
+      >
+        {title}
       </p>
+
+      {concepts.length > 0 ? (
+        <ul className="mt-3 space-y-2">
+          {concepts.map((concept, index) => (
+            <li
+              key={`${concept}-${index}`}
+              className={`flex items-start gap-2 rounded-lg px-3 py-2 text-sm ${
+                isMatched
+                  ? "bg-emerald-500/10 text-emerald-200"
+                  : "bg-amber-500/10 text-amber-200"
+              }`}
+            >
+              <span>{isMatched ? "✓" : "!"}</span>
+              <span>{concept}</span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-3 text-sm italic text-slate-500">
+          {emptyMessage}
+        </p>
+      )}
     </div>
   );
 }

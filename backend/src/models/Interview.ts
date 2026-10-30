@@ -32,6 +32,8 @@ export interface InterviewQuestion {
   questionText: string;
   category: InterviewQuestionCategory;
   order: number;
+  skills?: string[];
+  expectedConcepts?: string[];
   answer?: string;
   answeredAt?: Date;
 }
@@ -43,6 +45,9 @@ export interface QuestionEvaluation {
   feedback: string;
   strengths: string[];
   improvements: string[];
+  matchedConcepts: string[];
+  missingConcepts: string[];
+  conceptCoverage: number;
 }
 
 export interface InterviewEvaluation {
@@ -93,6 +98,14 @@ const InterviewQuestionSchema = new Schema<InterviewQuestion>(
       required: true,
       min: 1,
     },
+    skills: {
+      type: [String],
+      default: [],
+    },
+    expectedConcepts: {
+      type: [String],
+      default: [],
+    },
     answer: {
       type: String,
       default: undefined,
@@ -133,6 +146,20 @@ const QuestionEvaluationSchema = new Schema<QuestionEvaluation>(
     improvements: {
       type: [String],
       default: [],
+    },
+    matchedConcepts: {
+      type: [String],
+      default: [],
+    },
+    missingConcepts: {
+      type: [String],
+      default: [],
+    },
+    conceptCoverage: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100,
     },
   },
   { _id: false }
@@ -232,7 +259,7 @@ const InterviewSchema = new Schema<IInterview>(
     completedAt: {
       type: Date,
     },
-        evaluation: {
+    evaluation: {
       type: InterviewEvaluationSchema,
       default: undefined,
     },
