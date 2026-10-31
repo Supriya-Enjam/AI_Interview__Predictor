@@ -762,18 +762,26 @@ router.post(
         return;
       }
 
-      const unansweredQuestions = interview.questions.filter(
-        (question) => !question.answer?.trim()
-      );
+      // Count answered and skipped questions.
+const answeredQuestions = getAnsweredQuestionCount(
+  interview.questions
+);
 
-      if (unansweredQuestions.length > 0) {
-        res.status(400).json({
-          success: false,
-          message: "Please answer all questions before completing the interview.",
-          unansweredCount: unansweredQuestions.length,
-        });
-        return;
-      }
+const skippedQuestions =
+  interview.questions.length - answeredQuestions;
+
+// Require at least one answer before submission.
+if (answeredQuestions === 0) {
+  res.status(400).json({
+    success: false,
+    message:
+      "Please answer at least one question before submitting the interview.",
+    totalQuestions: interview.questions.length,
+    answeredQuestions,
+    skippedQuestions,
+  });
+  return;
+}
 
       interview.status = "completed";
       interview.completedAt = new Date();
@@ -790,6 +798,7 @@ router.post(
         completedAt: interview.completedAt,
         totalQuestions: interview.questions.length,
         answeredQuestions: getAnsweredQuestionCount(interview.questions),
+        skippedQuestions,
         evaluation,
         evaluationPending: !evaluation,
       });
@@ -877,12 +886,12 @@ router.post(
           ? error.message
           : "Unable to evaluate this interview.";
 
-      if (
-        message ===
-          "All interview questions must have saved answers before evaluation." ||
-        message === "Only completed interviews can be evaluated." ||
-        message === "This interview has no questions to evaluate."
-      ) {
+     if (
+  message ===
+    "At least one question must be answered before evaluation." ||
+  message === "Only completed interviews can be evaluated." ||
+  message === "This interview has no questions to evaluate."
+) {
         res.status(400).json({
           success: false,
           message,

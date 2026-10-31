@@ -1,6 +1,10 @@
 
 const API_BASE_URL = "http://localhost:5000/api/resumes";
 
+// =========================================================
+// RESUME QUESTION TYPES
+// =========================================================
+
 export interface ResumeQuestionResponse {
   success: boolean;
   message: string;
@@ -10,6 +14,10 @@ export interface ResumeQuestionResponse {
     questions: string[];
   };
 }
+
+// =========================================================
+// RESUME INTERVIEW TYPES
+// =========================================================
 
 export interface ResumeInterviewConfig {
   targetRole: string;
@@ -48,11 +56,83 @@ interface CreateResumeInterviewResponse {
   };
 }
 
+// =========================================================
+// RESUME ANALYSIS TYPES
+// =========================================================
+
+export interface ResumeDetectedSkill {
+  name: string;
+  relatedConcepts: string[];
+}
+
+export interface ResumeAnalysis {
+  targetRole: string;
+  readinessScore: number;
+
+  scoreBreakdown: {
+    roleSkillCoverage: number;
+    projectEvidence: number;
+    experienceEvidence: number;
+  };
+
+  detectedSkills: ResumeDetectedSkill[];
+
+  matchedSkills: string[];
+  missingSkills: string[];
+
+  strengths: string[];
+  recommendations: string[];
+  projects: string[];
+
+  sections: {
+    education: string[];
+    experience: string[];
+    projects: string[];
+    certifications: string[];
+  };
+
+  analysisMethod: string;
+}
+
+export interface ResumeAnalysisResponse {
+  success: boolean;
+  message: string;
+  data: {
+    fileType: "pdf" | "docx";
+    characterCount: number;
+    analysis: ResumeAnalysis;
+  };
+}
+
+// =========================================================
+// SHARED API ERROR HANDLER
+// =========================================================
+
+async function getResponseData<T>(
+  response: Response,
+  defaultMessage: string
+): Promise<T> {
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok || !data?.success) {
+    throw new Error(
+      data?.message || `${defaultMessage} (${response.status}).`
+    );
+  }
+
+  return data as T;
+}
+
+// =========================================================
+// GENERATE RESUME QUESTIONS
+// =========================================================
+
 export async function generateResumeQuestions(
   token: string,
   file: File
 ): Promise<ResumeQuestionResponse> {
   const formData = new FormData();
+
   formData.append("resume", file);
 
   const response = await fetch(`${API_BASE_URL}/questions`, {
@@ -63,16 +143,49 @@ export async function generateResumeQuestions(
     body: formData,
   });
 
-  const data = await response.json().catch(() => null);
+  return getResponseData<ResumeQuestionResponse>(
+    response,
+    "Resume upload failed"
+  );
+}
 
-  if (!response.ok || !data?.success) {
-    throw new Error(
-      data?.message || `Resume upload failed (${response.status}).`
-    );
+// =========================================================
+// ANALYZE RESUME
+// =========================================================
+
+export async function analyzeResume(
+  token: string,
+  file: File,
+  targetRole: string
+): Promise<ResumeAnalysisResponse> {
+  const formData = new FormData();
+
+  formData.append("resume", file);
+  formData.append("targetRole", targetRole);
+
+  const response = await fetch(`${API_BASE_URL}/analysis`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: formData,
+  });
+
+  const data = await getResponseData<ResumeAnalysisResponse>(
+    response,
+    "Resume analysis failed"
+  );
+
+  if (!data.data?.analysis) {
+    throw new Error("Resume analysis data is missing from the server response.");
   }
 
-  return data as ResumeQuestionResponse;
+  return data;
 }
+
+// =========================================================
+// CREATE RESUME-BASED INTERVIEW
+// =========================================================
 
 export async function createResumeInterview(
   token: string,
@@ -95,15 +208,13 @@ export async function createResumeInterview(
     body: formData,
   });
 
-  const data = (await response.json().catch(() => null)) as
-    | CreateResumeInterviewResponse
-    | null;
+  const data = await getResponseData<CreateResumeInterviewResponse>(
+    response,
+    "Could not create your resume interview"
+  );
 
-  if (!response.ok || !data?.success || !data.data?.interview?.id) {
-    throw new Error(
-      data?.message ||
-        `Could not create your resume interview (${response.status}).`
-    );
+  if (!data.data?.interview?.id) {
+    throw new Error("Interview details are missing from the server response.");
   }
 
   return data.data.interview;

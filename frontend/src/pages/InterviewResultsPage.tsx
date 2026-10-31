@@ -112,6 +112,7 @@ export default function InterviewResultsPage({
     Boolean(question.answer?.trim())
   ).length;
 
+  const skippedCount = questions.length - answeredCount;
   const completed = interview.status === "completed";
   const evaluation = interview.evaluation;
 
@@ -199,26 +200,33 @@ export default function InterviewResultsPage({
 
         {/* INTERVIEW STATUS */}
 
-        <section className="mt-6 grid gap-4 sm:grid-cols-3">
-          <SummaryItem
-            label="Interview Status"
-            value={capitalize(interview.status.replace("_", " "))}
-          />
+        {/* INTERVIEW STATUS */}
 
-          <SummaryItem
-            label="Questions Answered"
-            value={`${answeredCount} / ${questions.length}`}
-          />
+<section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+  <SummaryItem
+    label="Interview Status"
+    value={capitalize(interview.status.replace("_", " "))}
+  />
 
-          <SummaryItem
-            label="Completion Date"
-            value={
-              interview.completedAt
-                ? new Date(interview.completedAt).toLocaleString()
-                : "Not completed"
-            }
-          />
-        </section>
+  <SummaryItem
+    label="Questions Answered"
+    value={`${answeredCount} / ${questions.length}`}
+  />
+
+  <SummaryItem
+    label="Questions Skipped"
+    value={String(skippedCount)}
+  />
+
+  <SummaryItem
+    label="Completion Date"
+    value={
+      interview.completedAt
+        ? new Date(interview.completedAt).toLocaleString()
+        : "Not completed"
+    }
+  />
+</section>
 
         {!completed && (
           <section className="mt-8 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-6">
@@ -227,9 +235,10 @@ export default function InterviewResultsPage({
             </h2>
 
             <p className="mt-2 leading-7 text-slate-300">
-              Complete all interview questions before viewing your final
-              performance evaluation.
-            </p>
+  You can submit an interview after answering at least one question.
+  Unanswered questions will be marked as skipped. Complete your remaining
+  questions whenever you are ready.
+</p>
 
             <button
               type="button"
@@ -626,14 +635,26 @@ export default function InterviewResultsPage({
                 className="rounded-2xl border border-slate-800 bg-slate-900 p-5 sm:p-6"
               >
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <p className="text-sm font-semibold text-indigo-300">
-                    Question {index + 1}
-                  </p>
+  <p className="text-sm font-semibold text-indigo-300">
+    Question {index + 1}
+  </p>
 
-                  <span className="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-300">
-                    {capitalize(question.category)}
-                  </span>
-                </div>
+  <div className="flex flex-wrap items-center gap-2">
+    <span className="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-300">
+      {capitalize(question.category)}
+    </span>
+
+    {question.answer?.trim() ? (
+      <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-300">
+        Answered
+      </span>
+    ) : (
+      <span className="rounded-full bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-300">
+        Skipped
+      </span>
+    )}
+  </div>
+</div>
 
                 <h3 className="mt-3 text-lg font-semibold leading-relaxed">
                   {question.questionText}

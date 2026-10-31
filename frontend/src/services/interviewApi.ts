@@ -264,6 +264,9 @@ export interface CompleteInterviewResponse {
   completedAt?: string;
   totalQuestions?: number;
   answeredQuestions?: number;
+  skippedQuestions?: number;
+  evaluation?: InterviewEvaluationSummary | null;
+  evaluationPending?: boolean;
 }
 
 // =========================================================

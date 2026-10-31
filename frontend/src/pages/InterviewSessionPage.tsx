@@ -35,9 +35,7 @@ export default function InterviewSessionPage({
 
     async function loadInterview() {
       if (!token || !id) {
-        setError(
-          "Your interview session is missing. Please return to setup."
-        );
+        setError("Your interview session is missing. Please return to setup.");
         setLoading(false);
         return;
       }
@@ -60,7 +58,6 @@ export default function InterviewSessionPage({
 
         setInterview(result);
 
-        // Restore answers already saved in MongoDB.
         const backendAnswers: Record<string, string> = {};
 
         result.questions.forEach((question) => {
@@ -69,7 +66,6 @@ export default function InterviewSessionPage({
           }
         });
 
-        // Restore answers saved in the browser session.
         let browserAnswers: Record<string, string> = {};
 
         const savedAnswers = sessionStorage.getItem(
@@ -78,10 +74,7 @@ export default function InterviewSessionPage({
 
         if (savedAnswers) {
           try {
-            browserAnswers = JSON.parse(savedAnswers) as Record<
-              string,
-              string
-            >;
+            browserAnswers = JSON.parse(savedAnswers) as Record<string, string>;
           } catch {
             sessionStorage.removeItem(`interviewiq_answers_${id}`);
           }
@@ -94,7 +87,6 @@ export default function InterviewSessionPage({
 
         setAnswers(mergedAnswers);
 
-        // Save the merged answers locally.
         try {
           sessionStorage.setItem(
             `interviewiq_answers_${id}`,
@@ -130,7 +122,6 @@ export default function InterviewSessionPage({
   // =========================================================
 
   const questions = interview?.questions ?? [];
-
   const currentQuestion = questions[currentIndex];
 
   const currentAnswer = currentQuestion
@@ -140,6 +131,8 @@ export default function InterviewSessionPage({
   const answeredCount = questions.filter((question) =>
     Boolean(answers[question.questionId]?.trim())
   ).length;
+
+  const skippedCount = questions.length - answeredCount;
 
   // =========================================================
   // UPDATE ANSWER
@@ -179,9 +172,9 @@ export default function InterviewSessionPage({
 
     const answer = currentAnswer.trim();
 
+    // Empty answers are allowed and treated as skipped.
     if (!answer) {
-      setError("Please enter your answer before continuing.");
-      return false;
+      return true;
     }
 
     setSaving(true);
@@ -217,6 +210,7 @@ export default function InterviewSessionPage({
     const saved = await saveCurrentAnswer();
 
     if (saved) {
+      setError("");
       setCurrentIndex((index) =>
         Math.min(index + 1, questions.length - 1)
       );
@@ -224,7 +218,20 @@ export default function InterviewSessionPage({
   }
 
   // =========================================================
-  // COMPLETE INTERVIEW
+  // PREVIOUS QUESTION
+  // =========================================================
+
+  async function handlePrevious() {
+    const saved = await saveCurrentAnswer();
+
+    if (saved) {
+      setError("");
+      setCurrentIndex((index) => Math.max(index - 1, 0));
+    }
+  }
+
+  // =========================================================
+  // COMPLETE INTERVIEW - PARTIAL ANSWERS ALLOWED
   // =========================================================
 
   async function handleComplete(event: FormEvent<HTMLFormElement>) {
@@ -232,30 +239,38 @@ export default function InterviewSessionPage({
 
     if (!interview || !id) return;
 
-    const allAnswered = questions.every((question) => {
-      if (question.questionId === currentQuestion?.questionId) {
-        return Boolean(currentAnswer.trim());
-      }
+    // Include the latest textarea value.
+    const finalAnswers = {
+      ...answers,
+      ...(currentQuestion
+        ? { [currentQuestion.questionId]: currentAnswer }
+        : {}),
+    };
 
-      return Boolean(answers[question.questionId]?.trim());
-    });
+    const submittedAnswers = questions.filter((question) =>
+      Boolean(finalAnswers[question.questionId]?.trim())
+    );
 
-    if (!allAnswered) {
-      setError(
-        "Please answer every question before completing the interview."
-      );
+    if (submittedAnswers.length === 0) {
+      setError("Please answer at least one question before submitting.");
       return;
     }
-
-    // Save the final answer first.
-    const saved = await saveCurrentAnswer();
-
-    if (!saved) return;
 
     setSaving(true);
     setError("");
 
     try {
+      // Save every non-empty answer before completing.
+      for (const question of submittedAnswers) {
+        await saveInterviewAnswer(
+          token,
+          id,
+          question.questionId,
+          finalAnswers[question.questionId].trim()
+        );
+      }
+
+      // Complete the interview, including skipped questions.
       await completeInterview(token, id);
 
       sessionStorage.removeItem(`interviewiq_answers_${id}`);
@@ -268,7 +283,7 @@ export default function InterviewSessionPage({
       setError(
         err instanceof Error
           ? err.message
-          : "Unable to complete your interview."
+          : "Unable to submit your interview."
       );
     } finally {
       setSaving(false);
@@ -304,12 +319,13 @@ export default function InterviewSessionPage({
           </h1>
 
           <p className="mt-3 leading-7 text-slate-400">
-            Your answers have been submitted and your interview session
-            has been marked as completed.
+            Your submitted answers have been saved and your interview
+            session has been marked as completed.
           </p>
 
           <p className="mt-4 text-sm text-slate-300">
-            {questions.length} questions in total
+            {answeredCount} answered · {skippedCount} skipped ·{" "}
+            {questions.length} total
           </p>
 
           <button
@@ -424,6 +440,24 @@ export default function InterviewSessionPage({
             </span>
           </div>
 
+          {/* ANSWER SUMMARY */}
+
+          <div className="mt-6 grid grid-cols-2 gap-3">
+            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3">
+              <p className="text-xs text-slate-400">Answered</p>
+              <p className="mt-1 text-xl font-bold text-emerald-300">
+                {answeredCount}
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
+              <p className="text-xs text-slate-400">Skipped / unanswered</p>
+              <p className="mt-1 text-xl font-bold text-amber-300">
+                {skippedCount}
+              </p>
+            </div>
+          </div>
+
           {/* QUESTION AND ANSWER FORM */}
 
           <form onSubmit={handleComplete} className="mt-8">
@@ -447,17 +481,16 @@ export default function InterviewSessionPage({
               id="answer"
               value={currentAnswer}
               onChange={(event) => updateAnswer(event.target.value)}
-              placeholder="Explain your approach and provide examples where possible..."
+              placeholder="Explain your approach and provide examples where possible... (You may leave this blank to skip.)"
               rows={8}
               maxLength={10000}
-              required
               disabled={saving}
               className="mt-3 w-full resize-y rounded-2xl border border-slate-700 bg-slate-950 p-4 leading-7 text-slate-100 outline-none placeholder:text-slate-600 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 disabled:opacity-60"
             />
 
             <div className="mt-2 flex justify-between text-xs text-slate-500">
               <span>
-                Answers are saved to your interview session.
+                Leave blank to skip this question.
               </span>
 
               <span>{currentAnswer.length}/10000</span>
@@ -476,49 +509,44 @@ export default function InterviewSessionPage({
 
             {/* NAVIGATION BUTTONS */}
 
-            <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-between">
 
               <button
                 type="button"
-                onClick={() => {
-                  setError("");
-                  setCurrentIndex((index) =>
-                    Math.max(index - 1, 0)
-                  );
-                }}
+                onClick={() => void handlePrevious()}
                 disabled={currentIndex === 0 || saving}
                 className="rounded-xl border border-slate-700 px-5 py-3 font-semibold hover:border-indigo-400 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Previous
               </button>
 
-              {currentIndex < questions.length - 1 ? (
-                <button
-                  type="button"
-                  onClick={() => void handleNext()}
-                  disabled={saving}
-                  className="rounded-xl bg-indigo-600 px-6 py-3 font-semibold hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {saving ? "Saving answer..." : "Save & Next →"}
-                </button>
-              ) : (
+              <div className="flex flex-col gap-3 sm:flex-row">
+
+                {currentIndex < questions.length - 1 && (
+                  <button
+                    type="button"
+                    onClick={() => void handleNext()}
+                    disabled={saving}
+                    className="rounded-xl bg-indigo-600 px-6 py-3 font-semibold hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {saving ? "Saving..." : "Next Question →"}
+                  </button>
+                )}
+
                 <button
                   type="submit"
-                  disabled={saving}
+                  disabled={saving || (answeredCount === 0 && !currentAnswer.trim())}
                   className="rounded-xl bg-emerald-600 px-6 py-3 font-semibold hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {saving
-                    ? "Submitting..."
-                    : "Complete Interview"}
+                  {saving ? "Submitting..." : "Submit Interview"}
                 </button>
-              )}
 
+              </div>
             </div>
 
-            {/* ANSWER COUNT */}
-
             <p className="mt-5 text-center text-sm text-slate-500">
-              {answeredCount} of {questions.length} questions answered
+              {answeredCount} of {questions.length} questions answered ·{" "}
+              {skippedCount} unanswered
             </p>
 
           </form>

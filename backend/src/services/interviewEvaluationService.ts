@@ -344,17 +344,18 @@ export function evaluateCompletedInterview(
     );
   }
 
-  const unansweredQuestions = interview.questions.filter(
-    (question) => !question.answer?.trim()
+  // Evaluate only questions that have a saved, non-empty answer.
+  const answeredQuestions = interview.questions.filter(
+    (question) => question.answer?.trim()
   );
 
-  if (unansweredQuestions.length > 0) {
+  if (answeredQuestions.length === 0) {
     throw new Error(
-      "All interview questions must have saved answers before evaluation."
+      "At least one question must be answered before evaluation."
     );
   }
 
-  const questionEvaluations = interview.questions.map((question) =>
+  const questionEvaluations = answeredQuestions.map((question) =>
     evaluateAnswer(
       question.questionId,
       question.questionText,
@@ -363,6 +364,7 @@ export function evaluateCompletedInterview(
     )
   );
 
+  // Calculate the score using answered questions only.
   const overallScore = questionEvaluations.reduce(
     (total, evaluation) => total + evaluation.score,
     0
@@ -398,13 +400,13 @@ export function evaluateCompletedInterview(
 
   if (percentage >= 80) {
     summary =
-      "Your answers demonstrate strong preliminary performance across relevance, completeness, structure, specificity, and communication. Technical correctness has not been independently verified.";
+      "Your answered questions demonstrate strong preliminary performance across relevance, completeness, structure, specificity, and communication. Technical correctness has not been independently verified.";
   } else if (percentage >= 60) {
     summary =
-      "Your answers demonstrate developing interview readiness. Focus on improving weaker areas and including relevant practical examples.";
+      "Your answered questions demonstrate developing interview readiness. Focus on improving weaker areas and including relevant practical examples.";
   } else {
     summary =
-      "Your answers need further development. Practice answering questions directly, explaining concepts clearly, and supporting your answers with examples.";
+      "Your answered questions need further development. Practice answering questions directly, explaining concepts clearly, and supporting your answers with examples.";
   }
 
   return {
