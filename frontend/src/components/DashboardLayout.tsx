@@ -8,9 +8,11 @@ import {
 import {
   BarChart3,
   BrainCircuit,
+  Database,
   ChevronLeft,
   ChevronRight,
   CircleHelp,
+  ClipboardList,
   FileUser,
   Gauge,
   History,
@@ -83,6 +85,12 @@ const adminNavigation = [
     path: "/admin/candidates",
     icon: Users,
   },
+
+    {
+    label: "Interview Management",
+    path: "/admin/interviews",
+    icon: ClipboardList,
+  },
   {
     label: "Question Bank",
     path: "/admin/questions",
@@ -92,6 +100,11 @@ const adminNavigation = [
     label: "Model Monitoring",
     path: "/admin/model-monitoring",
     icon: Gauge,
+  },
+    {
+    label: "Dataset Management",
+    path: "/admin/datasets",
+    icon: Database,
   },
   {
     label: "My Profile",
@@ -133,8 +146,10 @@ export default function DashboardLayout({
   ? "Candidate Management"
   : location.pathname.startsWith("/admin/model-monitoring")
     ? "Model Monitoring"
-    : location.pathname.startsWith("/admin/questions")
-      ? "Question Bank"
+   : location.pathname.startsWith("/admin/datasets")
+  ? "Dataset Management"
+  : location.pathname.startsWith("/admin/questions")
+    ? "Question Bank"
       : location.pathname.startsWith("/admin")
         ? "Admin Dashboard"
         : "InterviewIQ");

@@ -25,6 +25,8 @@ import AdminQuestionBankPage from "./pages/AdminQuestionBankPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
 import AdminCandidatesPage from "./pages/AdminCandidatesPage";
 import AdminModelMonitoringPage from "./pages/AdminModelMonitoringPage";
+import AdminDatasetManagementPage from "./pages/AdminDatasetManagementPage";
+import AdminInterviewManagementPage from "./pages/AdminInterviewManagementPage";
 import ResumeInterviewPage from "./pages/ResumeInterviewPage";
 import DashboardLayout from "./components/DashboardLayout";
 import LearningPlanPage from "./pages/LearningPlanPage";
@@ -253,6 +255,28 @@ function AppRoutes() {
   element={
     session?.user.role === "admin" ? (
       <AdminModelMonitoringPage token={session.token} />
+    ) : (
+      <Navigate to="/dashboard" replace />
+    )
+  }
+/>
+
+<Route
+  path="/admin/datasets"
+  element={
+    session?.user.role === "admin" ? (
+      <AdminDatasetManagementPage token={session.token} />
+    ) : (
+      <Navigate to="/dashboard" replace />
+    )
+  }
+/>
+
+<Route
+  path="/admin/interviews"
+  element={
+    session?.user.role === "admin" ? (
+      <AdminInterviewManagementPage token={session.token} />
     ) : (
       <Navigate to="/dashboard" replace />
     )

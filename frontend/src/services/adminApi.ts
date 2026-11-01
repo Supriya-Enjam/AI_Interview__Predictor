@@ -104,6 +104,113 @@ export interface AdminCandidatesResponse {
 }
 
 // =========================================================
+// DATASET MANAGEMENT TYPES
+// =========================================================
+
+export type DatasetFileType = "csv" | "json";
+export type DatasetStatus = "active" | "inactive";
+
+export interface AdminDataset {
+  id: string;
+  name: string;
+  description: string;
+  originalFileName: string;
+  fileType: DatasetFileType;
+  recordCount: number;
+  status: DatasetStatus;
+  uploadedBy?: {
+    _id: string;
+    name?: string;
+    email?: string;
+  } | string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DatasetStats {
+  totalDatasets: number;
+  activeDatasets: number;
+  inactiveDatasets: number;
+  totalRecords: number;
+}
+
+export interface DatasetPagination {
+  page: number;
+  limit: number;
+  totalDatasets: number;
+  totalPages: number;
+}
+
+export interface AdminDatasetsResponse {
+  success: boolean;
+  datasets: AdminDataset[];
+  stats: DatasetStats;
+  pagination: DatasetPagination;
+}
+
+// =========================================================
+// INTERVIEW MANAGEMENT TYPES
+// =========================================================
+
+export type AdminInterviewStatus =
+  | "pending"
+  | "in_progress"
+  | "completed"
+  | "cancelled";
+
+export interface AdminInterview {
+  id: string;
+  candidate: {
+    id: string;
+    name: string;
+    email: string;
+    targetRole: string;
+  } | null;
+  targetRole: string;
+  category:
+    | "technical"
+    | "behavioral"
+    | "mixed"
+    | "hr"
+    | "situational"
+    | "coding";
+  difficulty: "beginner" | "intermediate" | "advanced";
+  duration: number;
+  status: AdminInterviewStatus;
+  questionCount: number;
+  answeredQuestionCount: number;
+  overallScore: number | null;
+  maxScore: number | null;
+  percentage: number | null;
+  evaluationSummary: string | null;
+  createdAt: string;
+  startedAt: string | null;
+  completedAt: string | null;
+}
+
+export interface AdminInterviewStats {
+  totalInterviews: number;
+  pendingInterviews: number;
+  inProgressInterviews: number;
+  completedInterviews: number;
+  cancelledInterviews: number;
+}
+
+export interface AdminInterviewPagination {
+  page: number;
+  limit: number;
+  totalInterviews: number;
+  totalPages: number;
+}
+
+export interface AdminInterviewsResponse {
+  success: boolean;
+  interviews: AdminInterview[];
+  stats: AdminInterviewStats;
+  pagination: AdminInterviewPagination;
+}
+
+// =========================================================
 // SHARED ADMIN API REQUEST
 // =========================================================
 
@@ -318,5 +425,179 @@ export async function getAdminCandidates(
     success: true,
     candidates: data.candidates as AdminCandidate[],
     pagination: data.pagination as CandidatePagination,
+  };
+}
+
+// =========================================================
+// DATASET MANAGEMENT API
+// =========================================================
+
+// Get datasets with search, status filter and pagination
+export async function getAdminDatasets(
+  token: string,
+  options: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: DatasetStatus | "all";
+  } = {}
+): Promise<AdminDatasetsResponse> {
+  const params = new URLSearchParams({
+    page: String(options.page ?? 1),
+    limit: String(options.limit ?? 10),
+  });
+
+  if (options.search?.trim()) {
+    params.set("search", options.search.trim());
+  }
+
+  if (options.status) {
+    params.set("status", options.status);
+  }
+
+  const data = await requestAdminApi(
+    `/datasets?${params.toString()}`,
+    token,
+    { method: "GET" }
+  );
+
+  if (
+    !Array.isArray(data.datasets) ||
+    !data.stats ||
+    !data.pagination
+  ) {
+    throw new Error("Invalid dataset management response.");
+  }
+
+  return {
+    success: true,
+    datasets: data.datasets as AdminDataset[],
+    stats: data.stats as DatasetStats,
+    pagination: data.pagination as DatasetPagination,
+  };
+}
+
+// Upload a CSV or JSON dataset
+export async function uploadAdminDataset(
+  token: string,
+  payload: {
+    name: string;
+    description?: string;
+    file: File;
+  }
+): Promise<AdminDataset> {
+  const formData = new FormData();
+
+  // Add text fields before the file.
+  formData.append("name", payload.name);
+  formData.append("description", payload.description ?? "");
+  formData.append("file", payload.file);
+
+  const response = await fetch(`${API_BASE_URL}/datasets`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: formData,
+  });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok || data.success === false) {
+    throw new Error(
+      data.message || `Dataset upload failed (${response.status})`
+    );
+  }
+
+  if (!data.dataset || typeof data.dataset !== "object") {
+    throw new Error("Invalid dataset upload response.");
+  }
+
+  return data.dataset as AdminDataset;
+}
+
+// Activate or deactivate a dataset
+export async function updateAdminDatasetStatus(
+  token: string,
+  datasetId: string,
+  status: DatasetStatus
+): Promise<void> {
+  await requestAdminApi(
+    `/datasets/${datasetId}/status`,
+    token,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    }
+  );
+}
+
+// Delete a dataset
+export async function deleteAdminDataset(
+  token: string,
+  datasetId: string
+): Promise<void> {
+  await requestAdminApi(
+    `/datasets/${datasetId}`,
+    token,
+    { method: "DELETE" }
+  );
+}
+
+// =========================================================
+// INTERVIEW MANAGEMENT API
+// =========================================================
+
+export async function getAdminInterviews(
+  token: string,
+  options: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: AdminInterviewStatus | "all";
+    category?: string;
+    difficulty?: string;
+  } = {}
+): Promise<AdminInterviewsResponse> {
+  const params = new URLSearchParams({
+    page: String(options.page ?? 1),
+    limit: String(options.limit ?? 10),
+  });
+
+  if (options.search?.trim()) {
+    params.set("search", options.search.trim());
+  }
+
+  if (options.status) {
+    params.set("status", options.status);
+  }
+
+  if (options.category) {
+    params.set("category", options.category);
+  }
+
+  if (options.difficulty) {
+    params.set("difficulty", options.difficulty);
+  }
+
+  const data = await requestAdminApi(
+    `/interviews?${params.toString()}`,
+    token,
+    { method: "GET" }
+  );
+
+  if (
+    !Array.isArray(data.interviews) ||
+    !data.stats ||
+    !data.pagination
+  ) {
+    throw new Error("Invalid interview management response.");
+  }
+
+  return {
+    success: true,
+    interviews: data.interviews as AdminInterview[],
+    stats: data.stats as AdminInterviewStats,
+    pagination: data.pagination as AdminInterviewPagination,
   };
 }
