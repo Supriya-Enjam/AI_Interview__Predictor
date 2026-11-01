@@ -6,13 +6,13 @@ import {
   useLocation,
 } from "react-router-dom";
 import {
-  
   BarChart3,
   BrainCircuit,
   ChevronLeft,
   ChevronRight,
   CircleHelp,
   FileUser,
+  Gauge,
   History,
   LayoutDashboard,
   LogOut,
@@ -21,6 +21,7 @@ import {
   ShieldCheck,
   Target,
   UserRound,
+  Users,
   X,
 } from "lucide-react";
 
@@ -30,7 +31,7 @@ interface DashboardLayoutProps {
   onLogout: () => void;
 }
 
-const navigation = [
+const candidateNavigation = [
   {
     label: "Dashboard",
     path: "/dashboard",
@@ -69,6 +70,36 @@ const navigation = [
   },
 ];
 
+
+const adminNavigation = [
+  {
+    label: "Admin Dashboard",
+    path: "/admin/dashboard",
+    icon: LayoutDashboard,
+    end: true,
+  },
+  {
+    label: "Candidate Management",
+    path: "/admin/candidates",
+    icon: Users,
+  },
+  {
+    label: "Question Bank",
+    path: "/admin/questions",
+    icon: ShieldCheck,
+  },
+  {
+    label: "Model Monitoring",
+    path: "/admin/model-monitoring",
+    icon: Gauge,
+  },
+  {
+    label: "My Profile",
+    path: "/profile",
+    icon: UserRound,
+  },
+];
+
 export default function DashboardLayout({
   userName,
   userRole,
@@ -76,21 +107,36 @@ export default function DashboardLayout({
 }: DashboardLayoutProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+
   const location = useLocation();
 
+  // Display navigation according to the logged-in user's role.
+  const navigation =
+    userRole === "admin"
+      ? adminNavigation
+      : candidateNavigation;
+
+  // Identify the current page.
   const currentPage =
-    navigation.find(
-      (item) =>
-        item.end
-          ? location.pathname === item.path
-          : location.pathname === item.path ||
-            location.pathname.startsWith(`${item.path}/`)
+    navigation.find((item) =>
+      item.end
+        ? location.pathname === item.path
+        : location.pathname === item.path ||
+          location.pathname.startsWith(`${item.path}/`)
     )?.label ??
     (location.pathname.startsWith("/interview/") &&
     !location.pathname.startsWith("/interview/history")
       ? "Interview Session"
+      : location.pathname.startsWith("/admin/model-monitoring")
+        ? "Model Monitoring"
+       : location.pathname.startsWith("/admin/candidates")
+  ? "Candidate Management"
+  : location.pathname.startsWith("/admin/model-monitoring")
+    ? "Model Monitoring"
+    : location.pathname.startsWith("/admin/questions")
+      ? "Question Bank"
       : location.pathname.startsWith("/admin")
-        ? "Question Bank"
+        ? "Admin Dashboard"
         : "InterviewIQ");
 
   const initials =
@@ -126,6 +172,7 @@ export default function DashboardLayout({
             : "-translate-x-full md:translate-x-0"
         } ${collapsed ? "md:w-20" : "md:w-72"} w-72`}
       >
+        {/* Brand */}
         <div className="flex h-[76px] shrink-0 items-center gap-3 border-b border-slate-800 px-5">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 shadow-lg shadow-indigo-950/40">
             <BrainCircuit size={23} className="text-white" />
@@ -166,16 +213,26 @@ export default function DashboardLayout({
           </button>
         </div>
 
+        {/* Navigation */}
         <div className="flex-1 overflow-y-auto px-3 py-6">
           <p
             className={`mb-3 px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 ${
-              collapsed && !mobileOpen ? "md:text-center md:px-0" : ""
+              collapsed && !mobileOpen
+                ? "md:text-center md:px-0"
+                : ""
             }`}
           >
-            {collapsed && !mobileOpen ? "MENU" : "Workspace"}
+            {collapsed && !mobileOpen
+              ? "MENU"
+              : userRole === "admin"
+                ? "Administration"
+                : "Workspace"}
           </p>
 
-          <nav className="space-y-1.5" aria-label="Main navigation">
+          <nav
+            className="space-y-1.5"
+            aria-label="Main navigation"
+          >
             {navigation.map((item) => {
               const Icon = item.icon;
 
@@ -184,34 +241,29 @@ export default function DashboardLayout({
                   key={item.path}
                   to={item.path}
                   end={item.end}
-                  title={collapsed && !mobileOpen ? item.label : undefined}
+                  title={
+                    collapsed && !mobileOpen
+                      ? item.label
+                      : undefined
+                  }
                   onClick={() => setMobileOpen(false)}
-                  className={({ isActive }) => linkClass(isActive)}
+                  className={({ isActive }) =>
+                    linkClass(isActive)
+                  }
                 >
                   <Icon size={19} className="shrink-0" />
 
                   {(!collapsed || mobileOpen) && (
-                    <span className="flex-1">{item.label}</span>
+                    <span className="flex-1">
+                      {item.label}
+                    </span>
                   )}
                 </NavLink>
               );
             })}
-
-            {userRole === "admin" && (
-              <NavLink
-                to="/admin/questions"
-                onClick={() => setMobileOpen(false)}
-                title={collapsed && !mobileOpen ? "Question Bank" : undefined}
-                className={({ isActive }) => linkClass(isActive)}
-              >
-                <ShieldCheck size={19} className="shrink-0" />
-                {(!collapsed || mobileOpen) && (
-                  <span className="flex-1">Question Bank</span>
-                )}
-              </NavLink>
-            )}
           </nav>
 
+          {/* Support */}
           <div className="my-6 border-t border-slate-800" />
 
           <p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
@@ -222,12 +274,18 @@ export default function DashboardLayout({
             <button
               type="button"
               onClick={() => {
-                window.location.href = "mailto:support@interviewiq.com";
+                window.location.href =
+                  "mailto:support@interviewiq.com";
               }}
-              title={collapsed && !mobileOpen ? "Help & Support" : undefined}
+              title={
+                collapsed && !mobileOpen
+                  ? "Help & Support"
+                  : undefined
+              }
               className={linkClass(false) + " w-full"}
             >
               <CircleHelp size={19} className="shrink-0" />
+
               {(!collapsed || mobileOpen) && (
                 <span>Help & Support</span>
               )}
@@ -235,6 +293,7 @@ export default function DashboardLayout({
           </div>
         </div>
 
+        {/* User profile and logout */}
         <div className="shrink-0 border-t border-slate-800 p-3">
           <div className="mb-2 flex items-center gap-3 rounded-xl bg-slate-800/70 p-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-500/20 text-sm font-bold text-indigo-300 ring-1 ring-indigo-400/30">
@@ -271,11 +330,15 @@ export default function DashboardLayout({
             title={collapsed && !mobileOpen ? "Log out" : undefined}
           >
             <LogOut size={19} className="shrink-0" />
-            {(!collapsed || mobileOpen) && <span>Log out</span>}
+
+            {(!collapsed || mobileOpen) && (
+              <span>Log out</span>
+            )}
           </button>
         </div>
       </aside>
 
+      {/* Main content */}
       <div
         className={`min-h-screen transition-[padding] duration-300 ${
           collapsed ? "md:pl-20" : "md:pl-72"
@@ -306,7 +369,9 @@ export default function DashboardLayout({
             <div className="hidden items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/5 px-3 py-1.5 sm:flex">
               <span className="h-2 w-2 rounded-full bg-emerald-400" />
               <span className="text-xs font-medium text-emerald-300">
-                AI Practice Workspace
+                {userRole === "admin"
+                  ? "Administration Workspace"
+                  : "AI Practice Workspace"}
               </span>
             </div>
 

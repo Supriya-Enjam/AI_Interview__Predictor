@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from "express";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
 
+import { Interview } from "../models/Interview";
 import { QuestionBankItem } from "../models/QuestionBank";
 import { User } from "../models/User";
 
@@ -246,4 +247,225 @@ router.delete("/questions/:id", requireAdmin, async (req: Request, res: Response
   }
 });
 
+// =========================================================
+// ADMIN CANDIDATE MANAGEMENT
+// =========================================================
+
+router.get("/candidates", requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 10));
+    const search = String(req.query.search || "").trim();
+
+    const filter: Record<string, unknown> = {
+      role: "candidate",
+    };
+
+    if (search) {
+      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+      filter.$or = [
+        { name: { $regex: escapedSearch, $options: "i" } },
+        { email: { $regex: escapedSearch, $options: "i" } },
+        { targetRole: { $regex: escapedSearch, $options: "i" } },
+      ];
+    }
+
+    const totalCandidates = await User.countDocuments(filter);
+
+    const candidates = await User.find(filter)
+      .select("name email targetRole createdAt")
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean();
+
+    const candidateIds = candidates.map((candidate) => candidate._id);
+
+    const interviewStats = await Interview.aggregate([
+      {
+        $match: {
+          candidateId: { $in: candidateIds },
+        },
+      },
+      {
+        $sort: {
+          createdAt: -1,
+        },
+      },
+      {
+        $group: {
+          _id: "$candidateId",
+          totalInterviews: { $sum: 1 },
+          completedInterviews: {
+            $sum: {
+              $cond: [{ $eq: ["$status", "completed"] }, 1, 0],
+            },
+          },
+          latestInterview: {
+            $first: {
+              targetRole: "$targetRole",
+              category: "$category",
+              difficulty: "$difficulty",
+              status: "$status",
+              createdAt: "$createdAt",
+              completedAt: "$completedAt",
+              percentage: "$evaluation.percentage",
+            },
+          },
+        },
+      },
+    ]);
+
+    const statsByCandidate = new Map(
+      interviewStats.map((item) => [String(item._id), item])
+    );
+
+    const candidateResults = candidates.map((candidate) => {
+      const stats = statsByCandidate.get(String(candidate._id));
+
+      return {
+        id: String(candidate._id),
+        name: candidate.name,
+        email: candidate.email,
+        targetRole: candidate.targetRole || "Not specified",
+        registeredAt: candidate.createdAt,
+        totalInterviews: stats?.totalInterviews ?? 0,
+        completedInterviews: stats?.completedInterviews ?? 0,
+        latestInterview: stats?.latestInterview ?? null,
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      candidates: candidateResults,
+      pagination: {
+        page,
+        limit,
+        totalCandidates,
+        totalPages: Math.ceil(totalCandidates / limit),
+      },
+    });
+  } catch (error) {
+    console.error("Admin candidate management error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Unable to load candidate information.",
+    });
+  }
+});
+
 export default router;
+
+// =========================================================
+// ADMIN MODEL MONITORING
+// =========================================================
+
+router.get("/model/monitoring", requireAdmin, async (_req: Request, res: Response) => {
+  try {
+    const [
+      totalInterviews,
+      completedInterviews,
+      evaluatedInterviews,
+      totalUsers,
+      rubricAverages,
+      evaluationMethods,
+      recentEvaluations,
+    ] = await Promise.all([
+      Interview.countDocuments(),
+      Interview.countDocuments({ status: "completed" }),
+      Interview.countDocuments({ evaluation: { $exists: true } }),
+      User.countDocuments({ role: "candidate" }),
+
+      Interview.aggregate([
+        { $match: { "evaluation.questionEvaluations.0": { $exists: true } } },
+        { $unwind: "$evaluation.questionEvaluations" },
+        {
+          $group: {
+            _id: null,
+            completeness: { $avg: "$evaluation.questionEvaluations.rubric.completeness" },
+            structure: { $avg: "$evaluation.questionEvaluations.rubric.structure" },
+            specificity: { $avg: "$evaluation.questionEvaluations.rubric.specificity" },
+            relevance: { $avg: "$evaluation.questionEvaluations.rubric.relevance" },
+            communication: { $avg: "$evaluation.questionEvaluations.rubric.communication" },
+            averageScore: { $avg: "$evaluation.questionEvaluations.score" },
+            maximumScore: { $avg: "$evaluation.questionEvaluations.maxScore" },
+            evaluatedAnswers: { $sum: 1 },
+          },
+        },
+      ]),
+
+      Interview.aggregate([
+        { $match: { evaluation: { $exists: true } } },
+        {
+          $group: {
+            _id: "$evaluation.evaluationMethod",
+            count: { $sum: 1 },
+          },
+        },
+      ]),
+
+      Interview.find({ evaluation: { $exists: true } })
+        .select("targetRole category difficulty evaluation.percentage evaluation.evaluatedAt")
+        .sort({ "evaluation.evaluatedAt": -1 })
+        .limit(5)
+        .lean(),
+    ]);
+
+    const averages = rubricAverages[0] ?? {
+      completeness: 0,
+      structure: 0,
+      specificity: 0,
+      relevance: 0,
+      communication: 0,
+      averageScore: 0,
+      maximumScore: 0,
+      evaluatedAnswers: 0,
+    };
+
+    res.status(200).json({
+      success: true,
+      monitoring: {
+        system: {
+          name: "InterviewIQ Rubric Evaluation Engine",
+          type: "Rule-based rubric evaluation",
+          evaluationMethod: "rubric",
+          trainedMachineLearningModel: false,
+        },
+        activity: {
+          totalUsers,
+          totalInterviews,
+          completedInterviews,
+          evaluatedInterviews,
+          evaluatedAnswers: averages.evaluatedAnswers,
+        },
+        performance: {
+          averageAnswerScore: Number(averages.averageScore.toFixed(2)),
+          averageMaximumScore: Number(averages.maximumScore.toFixed(2)),
+          rubricAverages: {
+            completeness: Number(averages.completeness.toFixed(2)),
+            structure: Number(averages.structure.toFixed(2)),
+            specificity: Number(averages.specificity.toFixed(2)),
+            relevance: Number(averages.relevance.toFixed(2)),
+            communication: Number(averages.communication.toFixed(2)),
+          },
+        },
+        evaluationMethods: evaluationMethods.map((item) => ({
+          method: item._id,
+          count: item.count,
+        })),
+        recentEvaluations,
+        metricsNote:
+          "These are descriptive statistics from the rule-based rubric evaluator. They are not ML accuracy, precision, recall, or F1-score measurements.",
+      },
+    });
+  } catch (error) {
+    console.error("Admin model monitoring error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Unable to load model monitoring statistics.",
+    });
+  }
+});

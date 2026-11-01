@@ -22,6 +22,9 @@ import InterviewResultsPage from "./pages/InterviewResultsPage";
 import InterviewHistoryPage from "./pages/InterviewHistoryPage";
 import AnalyticsPage from "./pages/AnalyticsPage";
 import AdminQuestionBankPage from "./pages/AdminQuestionBankPage";
+import AdminDashboardPage from "./pages/AdminDashboardPage";
+import AdminCandidatesPage from "./pages/AdminCandidatesPage";
+import AdminModelMonitoringPage from "./pages/AdminModelMonitoringPage";
 import ResumeInterviewPage from "./pages/ResumeInterviewPage";
 import DashboardLayout from "./components/DashboardLayout";
 import LearningPlanPage from "./pages/LearningPlanPage";
@@ -75,16 +78,20 @@ function AppRoutes() {
   });
 
   function handleAuthSuccess(token: string, user: AuthUser) {
-    const newSession: AuthSession = { token, user };
+  const newSession: AuthSession = { token, user };
 
-    sessionStorage.setItem(
-      "interviewiq_session",
-      JSON.stringify(newSession)
-    );
+  sessionStorage.setItem(
+    "interviewiq_session",
+    JSON.stringify(newSession)
+  );
 
-    setSession(newSession);
-    navigate("/dashboard", { replace: true });
-  }
+  setSession(newSession);
+
+  navigate(
+    user.role === "admin" ? "/admin/dashboard" : "/dashboard",
+    { replace: true }
+  );
+}
 
   function handleLogout() {
     sessionStorage.removeItem("interviewiq_session");
@@ -100,10 +107,13 @@ function AppRoutes() {
         path="/"
         element={
           session ? (
-            <Navigate to="/dashboard" replace />
-          ) : (
-            <LandingPage />
-          )
+  <Navigate
+    to={session.user.role === "admin" ? "/admin/dashboard" : "/dashboard"}
+    replace
+  />
+) : (
+  <LandingPage />
+)
         }
       />
 
@@ -154,6 +164,16 @@ function AppRoutes() {
           />
         }
       >
+        <Route
+  path="/admin/dashboard"
+  element={
+    session?.user.role === "admin" ? (
+      <AdminDashboardPage token={session.token} />
+    ) : (
+      <Navigate to="/dashboard" replace />
+    )
+  }
+/>
         <Route
           path="/dashboard"
           element={<DashboardPage token={session?.token ?? ""} />}
@@ -217,18 +237,47 @@ function AppRoutes() {
             )
           }
         />
+
+        <Route
+  path="/admin/candidates"
+  element={
+    session?.user.role === "admin" ? (
+      <AdminCandidatesPage token={session.token} />
+    ) : (
+      <Navigate to="/dashboard" replace />
+    )
+  }
+/>
+<Route
+  path="/admin/model-monitoring"
+  element={
+    session?.user.role === "admin" ? (
+      <AdminModelMonitoringPage token={session.token} />
+    ) : (
+      <Navigate to="/dashboard" replace />
+    )
+  }
+/>
+
       </Route>
+      
 
       {/* Unknown URLs */}
       <Route
-        path="*"
-        element={
-          <Navigate
-            to={session ? "/dashboard" : "/"}
-            replace
-          />
-        }
-      />
+  path="*"
+  element={
+    <Navigate
+      to={
+        session
+          ? session.user.role === "admin"
+            ? "/admin/dashboard"
+            : "/dashboard"
+          : "/"
+      }
+      replace
+    />
+  }
+/>
     </Routes>
   );
 }
