@@ -66,6 +66,15 @@ export interface QuestionEvaluationSummary {
   matchedKeywords: string[];
   missingKeywords: string[];
   keywordCoverage: number;
+
+  rubric: {
+  completeness: number;
+  structure: number;
+  specificity: number;
+  relevance: number;
+  communication: number;
+  total: number;
+};
 }
 
 export interface InterviewEvaluationSummary {

@@ -38,17 +38,27 @@ export interface InterviewQuestion {
   answeredAt?: Date;
 }
 
+export interface AnswerRubric {
+  completeness: number;
+  structure: number;
+  specificity: number;
+  relevance: number;
+  communication: number;
+  total: number;
+}
+
 export interface QuestionEvaluation {
   questionId: string;
   score: number;
   maxScore: number;
+  rubric: AnswerRubric;
   feedback: string;
   strengths: string[];
   improvements: string[];
   matchedConcepts: string[];
   missingConcepts: string[];
   conceptCoverage: number;
-    matchedKeywords: string[];
+  matchedKeywords: string[];
   missingKeywords: string[];
   keywordCoverage: number;
 }
@@ -137,6 +147,45 @@ const QuestionEvaluationSchema = new Schema<QuestionEvaluation>(
       required: true,
       min: 1,
     },
+
+    rubric: {
+  completeness: {
+    type: Number,
+    required: true,
+    min: 0,
+    max: 4,
+  },
+  structure: {
+    type: Number,
+    required: true,
+    min: 0,
+    max: 3,
+  },
+  specificity: {
+    type: Number,
+    required: true,
+    min: 0,
+    max: 3,
+  },
+  relevance: {
+    type: Number,
+    required: true,
+    min: 0,
+    max: 5,
+  },
+  communication: {
+    type: Number,
+    required: true,
+    min: 0,
+    max: 5,
+  },
+  total: {
+    type: Number,
+    required: true,
+    min: 0,
+    max: 20,
+  },
+},
     feedback: {
       type: String,
       required: true,

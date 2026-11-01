@@ -374,26 +374,34 @@ function evaluateAnswer(
   }
 
   const feedback =
-    rubric.total >= 20
-      ? "Strong preliminary response across completeness, relevance, structure, specificity, and communication indicators. Technical accuracy still requires separate verification."
-      : rubric.total >= 14
-        ? "The response demonstrates some useful development. Improve weaker areas with clearer explanations and relevant examples."
-        : "The response needs further development. Focus on answering the question directly and supporting your points with relevant details.";
+  rubric.total >= 16
+    ? "Strong preliminary response across completeness, relevance, structure, specificity, and communication indicators. Technical accuracy still requires separate verification."
+    : rubric.total >= 12
+      ? "The response demonstrates some useful development. Improve weaker areas with clearer explanations and relevant examples."
+      : "The response needs further development. Focus on answering the question directly and supporting your points with relevant details.";
 
-  return {
-    questionId,
-    score: rubric.total,
-    maxScore: 25,
-    feedback,
-    strengths,
-    improvements,
-    matchedConcepts: conceptResults.matchedConcepts,
-    missingConcepts: conceptResults.missingConcepts,
-    conceptCoverage: conceptResults.conceptCoverage,
-    matchedKeywords: keywordResults.matchedKeywords,
-    missingKeywords: keywordResults.missingKeywords,
-    keywordCoverage: keywordResults.keywordCoverage,
-  };
+ return {
+  questionId,
+  score: rubric.total,
+  maxScore: 20,
+  rubric: {
+    completeness: rubric.completeness,
+    structure: rubric.structure,
+    specificity: rubric.specificity,
+    relevance: rubric.relevance,
+    communication: rubric.communication,
+    total: rubric.total,
+  },
+  feedback,
+  strengths,
+  improvements,
+  matchedConcepts: conceptResults.matchedConcepts,
+  missingConcepts: conceptResults.missingConcepts,
+  conceptCoverage: conceptResults.conceptCoverage,
+  matchedKeywords: keywordResults.matchedKeywords,
+  missingKeywords: keywordResults.missingKeywords,
+  keywordCoverage: keywordResults.keywordCoverage,
+};
 }
 
 export function evaluateCompletedInterview(

@@ -164,8 +164,117 @@ const overallKeywordCoverage =
       100
     : 0;
 
-  return (
+   return (
     <main className="min-h-screen bg-slate-950 px-4 py-10 text-slate-100 sm:px-8">
+      
+      <style>{`
+  @media print {
+    @page {
+      size: A4;
+      margin: 12mm;
+    }
+
+    html,
+    body {
+      background: #ffffff !important;
+      color: #111827 !important;
+      print-color-adjust: exact;
+      -webkit-print-color-adjust: exact;
+    }
+
+    body {
+      margin: 0 !important;
+    }
+
+    /* Main report container */
+    main {
+      min-height: auto !important;
+      width: 100% !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      background: #ffffff !important;
+      color: #111827 !important;
+    }
+
+    main > div {
+      width: 100% !important;
+      max-width: 100% !important;
+      margin: 0 !important;
+    }
+
+    /* Remove dark website backgrounds */
+    main [class*="bg-slate-950"],
+    main [class*="bg-slate-900"],
+    main [class*="bg-slate-800"],
+    main [class*="bg-slate-700"] {
+      background: #ffffff !important;
+    }
+
+    /* Make report text readable */
+    main h1,
+    main h2,
+    main h3,
+    main h4,
+    main p,
+    main span,
+    main li {
+      color: #111827 !important;
+    }
+
+    /* Keep colored borders subtle */
+    main section,
+    main article,
+    main header,
+    main [class*="border-"] {
+      border-color: #d1d5db !important;
+      box-shadow: none !important;
+    }
+
+    /* Hide website navigation and floating elements */
+    main header button,
+    main button,
+    .print\\:hidden,
+    .fixed,
+    .sticky {
+      display: none !important;
+    }
+
+    /* Prevent headings from being separated from their content */
+    h1,
+    h2,
+    h3,
+    h4 {
+      break-after: avoid-page;
+      page-break-after: avoid;
+    }
+
+    /* Allow long question sections to flow naturally */
+    section,
+    article {
+      break-inside: auto !important;
+      page-break-inside: auto !important;
+    }
+
+    /* Avoid splitting smaller report cards */
+    main section > div,
+    main article > div {
+      box-shadow: none !important;
+    }
+
+    /* Remove unnecessary transitions and animations */
+    * {
+      animation: none !important;
+      transition: none !important;
+    }
+
+    /* Keep report footer readable */
+    footer {
+      background: #ffffff !important;
+      color: #111827 !important;
+    }
+  }
+`}</style>
+
       <div className="mx-auto max-w-5xl">
         <header className="mb-8 flex flex-wrap items-center justify-between gap-4">
           <button
@@ -548,6 +657,40 @@ const overallKeywordCoverage =
 
                   const matched = result.matchedConcepts ?? [];
                   const missing = result.missingConcepts ?? [];
+                  const rubricItems = [
+  {
+    label: "Completeness",
+    score: result.rubric?.completeness ?? 0,
+    maxScore: 4,
+    color: "bg-blue-500",
+  },
+  {
+    label: "Structure",
+    score: result.rubric?.structure ?? 0,
+    maxScore: 3,
+    color: "bg-cyan-500",
+  },
+  {
+    label: "Specificity",
+    score: result.rubric?.specificity ?? 0,
+    maxScore: 3,
+    color: "bg-violet-500",
+  },
+  {
+    label: "Relevance",
+    score: result.rubric?.relevance ?? 0,
+    maxScore: 5,
+    color: "bg-emerald-500",
+  },
+  {
+    label: "Communication",
+    score: result.rubric?.communication ?? 0,
+    maxScore: 5,
+    color: "bg-amber-500",
+  },
+];
+
+const hasRubric = Boolean(result.rubric);
                   const coverage = Math.max(
                     0,
                     Math.min(100, result.conceptCoverage ?? 0)
@@ -701,6 +844,59 @@ const keywordCoverage = Math.max(
     />
   </div>
 </div>
+
+{/* RUBRIC PERFORMANCE BREAKDOWN */}
+
+<div className="mt-5 rounded-xl border border-indigo-500/20 bg-slate-800/50 p-4">
+  <div className="flex flex-wrap items-center justify-between gap-2">
+    <h4 className="font-semibold text-indigo-300">
+      Performance Breakdown
+    </h4>
+
+    {hasRubric && (
+      <span className="text-sm font-bold text-indigo-300">
+        {result.rubric.total}/20
+      </span>
+    )}
+  </div>
+
+  {hasRubric ? (
+    <div className="mt-5 space-y-5">
+      {rubricItems.map((item) => {
+        const scorePercentage =
+          (item.score / item.maxScore) * 100;
+
+        return (
+          <div key={item.label}>
+            <div className="flex justify-between gap-3 text-sm">
+              <span className="font-medium text-slate-300">
+                {item.label}
+              </span>
+
+              <span className="font-semibold text-white">
+                {item.score}/{item.maxScore}
+              </span>
+            </div>
+
+            <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-slate-700">
+              <div
+                className={`h-full rounded-full ${item.color} transition-all duration-700`}
+                style={{
+                  width: `${Math.max(0, Math.min(100, scorePercentage))}%`,
+                }}
+              />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  ) : (
+    <p className="mt-3 text-sm text-amber-300">
+      Rubric breakdown is unavailable for this previously saved evaluation.
+      Complete a new interview to generate the detailed scores.
+    </p>
+  )}
+</div>
                       {/* FEEDBACK */}
 
                       <div className="mt-4 rounded-xl bg-slate-800/70 p-4">
@@ -823,22 +1019,34 @@ const keywordCoverage = Math.max(
 
         {/* ACTION BUTTONS */}
 
-        <div className="mt-10 flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={() => navigate("/interview/setup")}
-            className="rounded-xl bg-indigo-600 px-6 py-3 font-semibold hover:bg-indigo-500"
-          >
-            Start Another Interview
-          </button>
+        {/* ACTION BUTTONS */}
 
-          <button
-            type="button"
-            onClick={() => navigate("/dashboard")}
-            className="rounded-xl border border-slate-700 px-6 py-3 font-semibold hover:border-indigo-400"
-          >
-            Go to Dashboard
-          </button>
+<div className="mt-10 flex flex-wrap gap-3 print:hidden">
+  <button
+    type="button"
+    onClick={() => window.print()}
+    disabled={!completed || !evaluation}
+    className="rounded-xl bg-emerald-600 px-6 py-3 font-semibold text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
+  >
+    ↓ Download Performance Report
+  </button>
+
+  <button
+    type="button"
+    onClick={() => navigate("/interview/setup")}
+    className="rounded-xl bg-indigo-600 px-6 py-3 font-semibold hover:bg-indigo-500"
+  >
+    Start Another Interview
+  </button>
+
+  <button
+    type="button"
+    onClick={() => navigate("/dashboard")}
+    className="rounded-xl border border-slate-700 px-6 py-3 font-semibold hover:border-indigo-400"
+  >
+    Go to Dashboard
+  </button>
+
         </div>
       </div>
     </main>
