@@ -20,10 +20,11 @@ export default function InterviewHistoryPage({
   const [error, setError] = useState("");
 
   const [searchTerm, setSearchTerm] = useState("");
-const [statusFilter, setStatusFilter] = useState("all");
-const [categoryFilter, setCategoryFilter] = useState("all");
-const [sortOrder, setSortOrder] = useState("newest");
-
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [sortOrder, setSortOrder] = useState("newest");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   useEffect(() => {
     let active = true;
 
@@ -70,11 +71,34 @@ const [sortOrder, setSortOrder] = useState("newest");
           statusFilter === "all" ||
           item.status === statusFilter;
 
+                const interviewDate = new Date(item.createdAt).getTime();
+
+        const startDate = dateFrom
+          ? new Date(`${dateFrom}T00:00:00`).getTime()
+          : null;
+
+        const endDate = dateTo
+          ? new Date(`${dateTo}T00:00:00`).getTime() +
+            24 * 60 * 60 * 1000
+          : null;
+
+        const matchesDateFrom =
+          startDate === null || interviewDate >= startDate;
+
+        const matchesDateTo =
+          endDate === null || interviewDate < endDate;
+
         const matchesCategory =
           categoryFilter === "all" ||
           (item.category || "").toLowerCase() === categoryFilter;
 
-        return matchesSearch && matchesStatus && matchesCategory;
+        return (
+          matchesSearch &&
+          matchesStatus &&
+          matchesCategory &&
+          matchesDateFrom &&
+          matchesDateTo
+        );
       })
       .sort((a, b) => {
         const dateA = new Date(a.createdAt).getTime();
@@ -84,7 +108,15 @@ const [sortOrder, setSortOrder] = useState("newest");
           ? dateB - dateA
           : dateA - dateB;
       });
-  }, [interviews, searchTerm, statusFilter, categoryFilter, sortOrder]);
+    }, [
+    interviews,
+    searchTerm,
+    statusFilter,
+    categoryFilter,
+    sortOrder,
+    dateFrom,
+    dateTo,
+  ]);
 
     // Calculate category-wise interview performance.
   const categoryStats = useMemo(() => {
@@ -168,6 +200,26 @@ const [sortOrder, setSortOrder] = useState("newest");
         return score >= range.min && score <= range.max;
       }).length,
     }));
+  }, [interviews]);
+
+    // Calculate interview score trend over time.
+  const scoreTrend = useMemo(() => {
+    return interviews
+      .filter(
+        (item) =>
+          item.status === "completed" &&
+          typeof item.evaluation?.percentage === "number"
+      )
+      .sort(
+        (a, b) =>
+          new Date(a.createdAt).getTime() -
+          new Date(b.createdAt).getTime()
+      )
+      .map((item, index) => ({
+        interview: index + 1,
+        date: new Date(item.createdAt).toLocaleDateString(),
+        score: item.evaluation?.percentage ?? 0,
+      }));
   }, [interviews]);
 
   const handleExportCSV = () => {
@@ -434,6 +486,57 @@ const [sortOrder, setSortOrder] = useState("newest");
     )}
   </div>
 </section>
+{/* Interview Performance Trend */}
+<section className="mt-8">
+  <h2 className="mb-4 text-xl font-bold">
+    Interview Performance Trend
+  </h2>
+
+  <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+    {scoreTrend.length === 0 ? (
+      <p className="text-sm text-slate-400">
+        Complete and evaluate interviews to view your performance trend.
+      </p>
+    ) : (
+      <>
+        <div className="mb-4 flex flex-wrap justify-between gap-2">
+          <p className="text-sm text-slate-400">
+            Scores from oldest to newest
+          </p>
+
+          <p className="text-sm text-slate-400">
+            {scoreTrend.length} evaluated interviews
+          </p>
+        </div>
+
+        <div className="space-y-4">
+          {scoreTrend.map((item) => (
+            <div key={`${item.interview}-${item.date}`}>
+              <div className="mb-2 flex justify-between gap-3 text-sm">
+                <span className="text-slate-300">
+                  Interview {item.interview} · {item.date}
+                </span>
+
+                <span className="font-semibold text-indigo-300">
+                  {item.score}%
+                </span>
+              </div>
+
+              <div className="h-3 overflow-hidden rounded-full bg-slate-800">
+                <div
+                  className="h-full rounded-full bg-indigo-500 transition-all"
+                  style={{
+                    width: `${Math.min(100, Math.max(0, item.score))}%`,
+                  }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </>
+    )}
+  </div>
+</section>
 
 <div className="mt-6 flex justify-end">
   <button
@@ -449,8 +552,7 @@ const [sortOrder, setSortOrder] = useState("newest");
 <section className="mt-8 space-y-4">
 
               {/* Search and filters */}
-              <div className="grid gap-3 rounded-2xl border border-slate-800 bg-slate-900 p-5 sm:grid-cols-2 lg:grid-cols-4">
-
+             <div className="grid gap-3 rounded-2xl border border-slate-800 bg-slate-900 p-5 sm:grid-cols-2 lg:grid-cols-3">
                 <input
                   type="text"
                   value={searchTerm}
@@ -490,6 +592,24 @@ const [sortOrder, setSortOrder] = useState("newest");
                   <option value="newest">Newest first</option>
                   <option value="oldest">Oldest first</option>
                 </select>
+<input
+  type="date"
+  value={dateFrom}
+  max={dateTo || undefined}
+  onChange={(e) => setDateFrom(e.target.value)}
+  aria-label="Start date"
+  className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-indigo-400"
+/>
+
+<input
+  type="date"
+  value={dateTo}
+  min={dateFrom || undefined}
+  onChange={(e) => setDateTo(e.target.value)}
+  aria-label="End date"
+  className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none focus:border-indigo-400"
+/>
+
               </div>
 
               <p className="text-sm text-slate-400">
@@ -586,11 +706,13 @@ const [sortOrder, setSortOrder] = useState("newest");
                   <button
                     type="button"
                     onClick={() => {
-                      setSearchTerm("");
-                      setStatusFilter("all");
-                      setCategoryFilter("all");
-                      setSortOrder("newest");
-                    }}
+  setSearchTerm("");
+  setStatusFilter("all");
+  setCategoryFilter("all");
+  setSortOrder("newest");
+  setDateFrom("");
+  setDateTo("");
+}}
                     className="mt-4 text-sm font-semibold text-indigo-300 hover:text-white"
                   >
                     Clear filters
