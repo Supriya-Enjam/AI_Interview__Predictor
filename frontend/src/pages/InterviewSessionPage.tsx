@@ -1,5 +1,10 @@
 
-import { useEffect, useState, type FormEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   completeInterview,
@@ -7,6 +12,46 @@ import {
   saveInterviewAnswer,
   type InterviewSession,
 } from "../services/interviewApi";
+
+// =========================================================
+// BROWSER SPEECH RECOGNITION TYPES
+// =========================================================
+
+interface SpeechRecognitionAlternativeLike {
+  transcript: string;
+}
+
+interface SpeechRecognitionResultLike {
+  readonly length: number;
+  readonly isFinal: boolean;
+  [index: number]: SpeechRecognitionAlternativeLike;
+}
+
+interface SpeechRecognitionEventLike {
+  readonly resultIndex: number;
+  readonly results: {
+    readonly length: number;
+    [index: number]: SpeechRecognitionResultLike;
+  };
+}
+
+interface SpeechRecognitionErrorLike {
+  error: string;
+}
+
+interface SpeechRecognitionLike {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onerror: ((event: SpeechRecognitionErrorLike) => void) | null;
+  onend: (() => void) | null;
+  start(): void;
+  stop(): void;
+  abort(): void;
+}
+
+type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
 
 interface InterviewSessionPageProps {
   token: string;
@@ -25,6 +70,35 @@ export default function InterviewSessionPage({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [completed, setCompleted] = useState(false);
+
+  // Voice interview state
+  const [voiceSupported, setVoiceSupported] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+
+  // =========================================================
+  // CHECK BROWSER VOICE SUPPORT AND CLEANUP
+  // =========================================================
+
+  useEffect(() => {
+    const browserWindow = window as Window & {
+      SpeechRecognition?: SpeechRecognitionConstructor;
+      webkitSpeechRecognition?: SpeechRecognitionConstructor;
+    };
+
+    const Recognition =
+      browserWindow.SpeechRecognition ??
+      browserWindow.webkitSpeechRecognition;
+
+    setVoiceSupported(Boolean(Recognition));
+
+    return () => {
+      recognitionRef.current?.abort();
+      window.speechSynthesis?.cancel();
+    };
+  }, []);
 
   // =========================================================
   // LOAD INTERVIEW AND RESTORE ANSWERS
@@ -52,7 +126,6 @@ export default function InterviewSessionPage({
 
         setInterview(result);
 
-        // Restore answers saved in the backend.
         const backendAnswers: Record<string, string> = {};
 
         result.questions.forEach((question) => {
@@ -61,7 +134,6 @@ export default function InterviewSessionPage({
           }
         });
 
-        // Restore answers saved in the browser.
         let browserAnswers: Record<string, string> = {};
 
         const savedAnswers = sessionStorage.getItem(
@@ -76,7 +148,6 @@ export default function InterviewSessionPage({
           }
         }
 
-        // Backend answers take priority over older browser answers.
         const mergedAnswers = {
           ...browserAnswers,
           ...backendAnswers,
@@ -84,13 +155,11 @@ export default function InterviewSessionPage({
 
         setAnswers(mergedAnswers);
 
-        // Restore completed interview state after restoring answers.
         if (result.status === "completed") {
           setCompleted(true);
           return;
         }
 
-        // Keep active interview answers synchronized with session storage.
         try {
           sessionStorage.setItem(
             `interviewiq_answers_${id}`,
@@ -166,6 +235,160 @@ export default function InterviewSessionPage({
   }
 
   // =========================================================
+  // READ QUESTION ALOUD
+  // =========================================================
+
+  function readQuestionAloud() {
+    if (!currentQuestion || !("speechSynthesis" in window)) {
+      setError("Question audio is not supported by this browser.");
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(
+      currentQuestion.questionText
+    );
+
+    utterance.lang = "en-IN";
+    utterance.rate = 0.9;
+
+    utterance.onstart = () => setIsSpeaking(true);
+
+    utterance.onend = () => setIsSpeaking(false);
+
+    utterance.onerror = () => {
+      setIsSpeaking(false);
+      setError("Unable to read the question aloud.");
+    };
+
+    window.speechSynthesis.speak(utterance);
+  }
+
+  // =========================================================
+  // START VOICE INPUT
+  // =========================================================
+
+  function startVoiceInput() {
+    const browserWindow = window as Window & {
+      SpeechRecognition?: SpeechRecognitionConstructor;
+      webkitSpeechRecognition?: SpeechRecognitionConstructor;
+    };
+
+    const Recognition =
+      browserWindow.SpeechRecognition ??
+      browserWindow.webkitSpeechRecognition;
+
+    if (!Recognition) {
+      setError(
+        "Voice input is not supported. Please use Chrome or enter your answer manually."
+      );
+      return;
+    }
+
+    if (!currentQuestion || saving) return;
+
+    recognitionRef.current?.abort();
+
+    const questionId = currentQuestion.questionId;
+    const recognition = new Recognition();
+
+    recognition.lang = "en-IN";
+    recognition.continuous = true;
+    recognition.interimResults = false;
+
+    recognition.onresult = (event) => {
+      let transcript = "";
+
+      for (
+        let index = event.resultIndex;
+        index < event.results.length;
+        index += 1
+      ) {
+        if (event.results[index].isFinal) {
+          transcript += event.results[index][0].transcript;
+        }
+      }
+
+      const recognizedText = transcript.trim();
+
+      if (!recognizedText) return;
+
+      setAnswers((previousAnswers) => {
+        const existingAnswer = previousAnswers[questionId] ?? "";
+
+        const updatedAnswers = {
+          ...previousAnswers,
+          [questionId]: `${existingAnswer}${existingAnswer ? " " : ""}${recognizedText}`,
+        };
+
+        if (id) {
+          try {
+            sessionStorage.setItem(
+              `interviewiq_answers_${id}`,
+              JSON.stringify(updatedAnswers)
+            );
+          } catch {
+            // Backend saving remains available.
+          }
+        }
+
+        return updatedAnswers;
+      });
+
+      setError("");
+    };
+
+    recognition.onerror = (event) => {
+      setIsListening(false);
+
+      if (event.error === "not-allowed") {
+        setError(
+          "Microphone access was denied. Please allow microphone permission in your browser."
+        );
+      } else if (event.error !== "no-speech" && event.error !== "aborted") {
+        setError(`Voice input error: ${event.error}`);
+      }
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognitionRef.current = recognition;
+    setError("");
+
+    try {
+      recognition.start();
+      setIsListening(true);
+    } catch {
+      setIsListening(false);
+      setError("Unable to start voice input. Please try again.");
+    }
+  }
+
+  // =========================================================
+  // STOP VOICE INPUT
+  // =========================================================
+
+  function stopVoiceInput() {
+    recognitionRef.current?.stop();
+    setIsListening(false);
+  }
+
+  // =========================================================
+  // STOP VOICE WHEN CHANGING QUESTIONS
+  // =========================================================
+
+  useEffect(() => {
+    recognitionRef.current?.abort();
+    setIsListening(false);
+
+    window.speechSynthesis?.cancel();
+    setIsSpeaking(false);
+  }, [currentIndex]);
+
+  // =========================================================
   // SAVE CURRENT ANSWER
   // =========================================================
 
@@ -176,7 +399,6 @@ export default function InterviewSessionPage({
 
     const answer = currentAnswer.trim();
 
-    // Empty answers are allowed and treated as skipped.
     if (!answer) {
       return true;
     }
@@ -235,7 +457,7 @@ export default function InterviewSessionPage({
   }
 
   // =========================================================
-  // COMPLETE INTERVIEW - PARTIAL ANSWERS ALLOWED
+  // COMPLETE INTERVIEW
   // =========================================================
 
   async function handleComplete(event: FormEvent<HTMLFormElement>) {
@@ -243,7 +465,12 @@ export default function InterviewSessionPage({
 
     if (!interview || !id) return;
 
-    // Include the latest textarea value.
+    // Stop any active microphone or question audio.
+    recognitionRef.current?.abort();
+    setIsListening(false);
+    window.speechSynthesis?.cancel();
+    setIsSpeaking(false);
+
     const finalAnswers = {
       ...answers,
       ...(currentQuestion
@@ -264,7 +491,6 @@ export default function InterviewSessionPage({
     setError("");
 
     try {
-      // Save every non-empty answer before completing.
       for (const question of submittedAnswers) {
         await saveInterviewAnswer(
           token,
@@ -274,7 +500,6 @@ export default function InterviewSessionPage({
         );
       }
 
-      // Complete the interview, including skipped questions.
       await completeInterview(token, id);
 
       sessionStorage.removeItem(`interviewiq_answers_${id}`);
@@ -383,7 +608,6 @@ export default function InterviewSessionPage({
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-8 text-slate-100 sm:px-8">
       <div className="mx-auto max-w-3xl">
-
         <header className="mb-8 flex items-center justify-between gap-4">
           <button
             type="button"
@@ -399,7 +623,6 @@ export default function InterviewSessionPage({
         </header>
 
         <section className="rounded-3xl border border-slate-800 bg-slate-900 p-6 sm:p-9">
-
           {/* HEADER AND PROGRESS */}
 
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -465,7 +688,6 @@ export default function InterviewSessionPage({
           {/* QUESTION AND ANSWER FORM */}
 
           <form onSubmit={handleComplete} className="mt-8">
-
             <p className="text-sm font-medium text-slate-400">
               Question {currentQuestion.order} · {currentQuestion.category}
             </p>
@@ -497,6 +719,57 @@ export default function InterviewSessionPage({
               <span>{currentAnswer.length}/10000</span>
             </div>
 
+            {/* VOICE INTERVIEW CONTROLS */}
+
+            <div className="mt-5 rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-4">
+              <h3 className="font-semibold text-indigo-300">
+                Voice Interview Assistant
+              </h3>
+
+              <p className="mt-1 text-sm text-slate-400">
+                Listen to the question or speak your answer. Your recognized
+                speech will appear in the answer box above.
+              </p>
+
+              <div className="mt-4 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={readQuestionAloud}
+                  disabled={isSpeaking || saving}
+                  className="rounded-xl border border-indigo-400/40 px-4 py-2 text-sm font-semibold text-indigo-300 hover:bg-indigo-500/10 disabled:opacity-50"
+                >
+                  {isSpeaking ? "Reading..." : "🔊 Read Question"}
+                </button>
+
+                {!isListening ? (
+                  <button
+                    type="button"
+                    onClick={startVoiceInput}
+                    disabled={!voiceSupported || saving}
+                    className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    🎤 Start Speaking
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={stopVoiceInput}
+                    className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-500"
+                  >
+                    ⏹ Stop Listening
+                  </button>
+                )}
+              </div>
+
+              <p className="mt-3 text-xs text-slate-400" aria-live="polite">
+                {isListening
+                  ? "🎙 Listening... Speak clearly into your microphone."
+                  : !voiceSupported
+                    ? "Voice input is unavailable in this browser. You can still type your answer manually."
+                    : "Microphone is ready."}
+              </p>
+            </div>
+
             {/* ERROR MESSAGE */}
 
             {error && (
@@ -511,7 +784,6 @@ export default function InterviewSessionPage({
             {/* NAVIGATION BUTTONS */}
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-between">
-
               <button
                 type="button"
                 onClick={() => void handlePrevious()}
@@ -522,7 +794,6 @@ export default function InterviewSessionPage({
               </button>
 
               <div className="flex flex-col gap-3 sm:flex-row">
-
                 {currentIndex < questions.length - 1 && (
                   <button
                     type="button"
@@ -536,12 +807,14 @@ export default function InterviewSessionPage({
 
                 <button
                   type="submit"
-                  disabled={saving || (answeredCount === 0 && !currentAnswer.trim())}
+                  disabled={
+                    saving ||
+                    (answeredCount === 0 && !currentAnswer.trim())
+                  }
                   className="rounded-xl bg-emerald-600 px-6 py-3 font-semibold hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {saving ? "Submitting..." : "Submit Interview"}
                 </button>
-
               </div>
             </div>
 
@@ -549,7 +822,6 @@ export default function InterviewSessionPage({
               {answeredCount} of {questions.length} questions answered ·{" "}
               {skippedCount} unanswered
             </p>
-
           </form>
         </section>
       </div>

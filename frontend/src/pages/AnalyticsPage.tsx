@@ -259,6 +259,19 @@ export default function AnalyticsPage({ token }: AnalyticsPageProps) {
     }));
   }, [completedInterviews]);
 
+    // =========================================================
+  // RECENT INTERVIEW HISTORY
+  // =========================================================
+
+  const recentInterviews = useMemo(() => {
+    return [...history]
+      .sort(
+        (a, b) =>
+          new Date(b.completedAt ?? b.createdAt).getTime() -
+          new Date(a.completedAt ?? a.createdAt).getTime()
+      )
+      .slice(0, 5);
+  }, [history]);
   // =========================================================
   // SVG CHART CONFIGURATION
   // =========================================================
@@ -823,6 +836,87 @@ export default function AnalyticsPage({ token }: AnalyticsPageProps) {
             title="Scores by Difficulty"
             data={difficultyBreakdown}
           />
+        </section>
+
+                {/* ================================================= */}
+        {/* RECENT INTERVIEW HISTORY */}
+        {/* ================================================= */}
+
+        <section className="mt-8 rounded-3xl border border-slate-800 bg-slate-900 p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-bold">
+                Recent Interviews
+              </h2>
+
+              <p className="mt-1 text-sm text-slate-400">
+                Your five most recent interview sessions.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => navigate("/interview/history")}
+              className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-semibold hover:border-indigo-400"
+            >
+              View All
+            </button>
+          </div>
+
+          {recentInterviews.length === 0 ? (
+            <p className="mt-5 text-sm text-slate-400">
+              No interview sessions available yet.
+            </p>
+          ) : (
+            <div className="mt-5 overflow-x-auto">
+              <table className="w-full min-w-[600px] text-left text-sm">
+                <thead>
+                  <tr className="border-b border-slate-800 text-slate-400">
+                    <th className="px-3 py-3 font-medium">Category</th>
+                    <th className="px-3 py-3 font-medium">Difficulty</th>
+                    <th className="px-3 py-3 font-medium">Date</th>
+                    <th className="px-3 py-3 font-medium">Status</th>
+                    <th className="px-3 py-3 font-medium">Score</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {recentInterviews.map((item, index) => (
+                    <tr
+                      key={`${item.createdAt}-${index}`}
+                      className="border-b border-slate-800/70 last:border-0"
+                    >
+                      <td className="px-3 py-4 font-medium text-slate-200">
+                        {capitalize(item.category)}
+                      </td>
+
+                      <td className="px-3 py-4 text-slate-300">
+                        {capitalize(item.difficulty)}
+                      </td>
+
+                      <td className="px-3 py-4 text-slate-400">
+                        {new Date(
+                          item.completedAt ?? item.createdAt
+                        ).toLocaleDateString()}
+                      </td>
+
+                      <td className="px-3 py-4">
+                        <span className="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-300">
+                          {capitalize(item.status.replace("_", " "))}
+                        </span>
+                      </td>
+
+                      <td className="px-3 py-4 font-semibold text-indigo-300">
+                        {typeof item.evaluation?.percentage === "number"
+                          ? `${clampScore(item.evaluation.percentage)}%`
+                          : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
 
         {/* ================================================= */}
