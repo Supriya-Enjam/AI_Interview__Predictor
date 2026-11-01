@@ -61,6 +61,11 @@ export interface QuestionEvaluationSummary {
   matchedConcepts: string[];
   missingConcepts: string[];
   conceptCoverage: number;
+
+  // Keyword analysis
+  matchedKeywords: string[];
+  missingKeywords: string[];
+  keywordCoverage: number;
 }
 
 export interface InterviewEvaluationSummary {

@@ -145,6 +145,25 @@ export default function InterviewResultsPage({
         100
       : 0;
 
+      // KEYWORD ANALYSIS
+
+const matchedKeywordCount = questionResults.reduce(
+  (total, result) => total + (result.matchedKeywords?.length ?? 0),
+  0
+);
+
+const missingKeywordCount = questionResults.reduce(
+  (total, result) => total + (result.missingKeywords?.length ?? 0),
+  0
+);
+
+const overallKeywordCoverage =
+  matchedKeywordCount + missingKeywordCount > 0
+    ? (matchedKeywordCount /
+        (matchedKeywordCount + missingKeywordCount)) *
+      100
+    : 0;
+
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-10 text-slate-100 sm:px-8">
       <div className="mx-auto max-w-5xl">
@@ -397,6 +416,72 @@ export default function InterviewResultsPage({
               )}
             </section>
 
+            {/* KEYWORD ANALYSIS OVERVIEW */}
+
+<section className="mt-8 rounded-3xl border border-violet-500/20 bg-slate-900 p-6 sm:p-8">
+  <p className="text-sm font-semibold uppercase tracking-widest text-violet-300">
+    Answer Keyword Analysis
+  </p>
+
+  <h2 className="mt-2 text-2xl font-extrabold">
+    Keyword Coverage Overview
+  </h2>
+
+  <p className="mt-2 text-sm leading-6 text-slate-400">
+    Review the important keywords detected in your answers and identify
+    keywords that were missing compared with the expected concepts for
+    each interview question.
+  </p>
+
+  {matchedKeywordCount + missingKeywordCount === 0 ? (
+    <div className="mt-5 rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-200">
+      No keyword analysis is available for this interview.
+      Complete a new interview to generate keyword analysis.
+    </div>
+  ) : (
+    <>
+      <div className="mt-6 grid gap-4 sm:grid-cols-3">
+        <ConceptSummary
+          label="Matched Keywords"
+          value={matchedKeywordCount}
+          color="text-emerald-300"
+        />
+
+        <ConceptSummary
+          label="Missing Keywords"
+          value={missingKeywordCount}
+          color="text-amber-300"
+        />
+
+        <ConceptSummary
+          label="Keyword Coverage"
+          value={Number(overallKeywordCoverage.toFixed(1))}
+          color="text-violet-300"
+        />
+      </div>
+
+      <div className="mt-6">
+        <div className="flex justify-between text-sm">
+          <span className="font-semibold text-slate-300">
+            Overall Keyword Coverage
+          </span>
+
+          <span className="font-bold text-violet-300">
+            {overallKeywordCoverage.toFixed(1)}%
+          </span>
+        </div>
+
+        <div className="mt-3 h-4 overflow-hidden rounded-full bg-slate-800">
+          <div
+            className="h-full rounded-full bg-violet-500 transition-all duration-700"
+            style={{ width: `${overallKeywordCoverage}%` }}
+          />
+        </div>
+      </div>
+    </>
+  )}
+</section>
+
             {/* STRENGTHS AND IMPROVEMENTS */}
 
             <section className="mt-8 grid gap-5 md:grid-cols-2">
@@ -467,6 +552,16 @@ export default function InterviewResultsPage({
                     0,
                     Math.min(100, result.conceptCoverage ?? 0)
                   );
+
+                  // Question-wise keyword analysis
+
+const matchedKeywords = result.matchedKeywords ?? [];
+const missingKeywords = result.missingKeywords ?? [];
+
+const keywordCoverage = Math.max(
+  0,
+  Math.min(100, result.keywordCoverage ?? 0)
+);
 
                   return (
                     <article
@@ -565,7 +660,47 @@ export default function InterviewResultsPage({
                             </div>
                           )}
                       </div>
+{/* KEYWORD COVERAGE */}
 
+<div className="mt-5 rounded-xl border border-violet-500/20 bg-slate-800/50 p-4">
+  <div className="flex flex-wrap items-center justify-between gap-2">
+    <p className="text-sm font-semibold text-violet-300">
+      Keyword Coverage
+    </p>
+
+    <span className="text-sm font-bold text-violet-300">
+      {keywordCoverage.toFixed(1)}%
+    </span>
+  </div>
+
+  <div className="mt-3 h-3 overflow-hidden rounded-full bg-slate-700">
+    <div
+      className="h-full rounded-full bg-violet-500 transition-all duration-700"
+      style={{ width: `${keywordCoverage}%` }}
+    />
+  </div>
+
+  <div className="mt-3 flex flex-wrap gap-3 text-xs text-slate-400">
+    <span>Matched: {matchedKeywords.length}</span>
+    <span>Missing: {missingKeywords.length}</span>
+  </div>
+
+  <div className="mt-5 grid gap-4 sm:grid-cols-2">
+    <ConceptList
+      title="Matched Keywords"
+      concepts={matchedKeywords}
+      emptyMessage="No keywords were matched."
+      type="matched"
+    />
+
+    <ConceptList
+      title="Missing Keywords"
+      concepts={missingKeywords}
+      emptyMessage="No missing keywords identified."
+      type="missing"
+    />
+  </div>
+</div>
                       {/* FEEDBACK */}
 
                       <div className="mt-4 rounded-xl bg-slate-800/70 p-4">

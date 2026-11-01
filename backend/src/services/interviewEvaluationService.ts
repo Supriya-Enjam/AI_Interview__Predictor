@@ -20,6 +20,12 @@ interface ConceptMatchResult {
   conceptCoverage: number;
 }
 
+interface KeywordMatchResult {
+  matchedKeywords: string[];
+  missingKeywords: string[];
+  keywordCoverage: number;
+}
+
 function countWords(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
@@ -105,6 +111,43 @@ function matchExpectedConcepts(
   };
 }
 
+// Analyze individual keywords from expected concepts.
+function analyzeKeywords(
+  answer: string,
+  expectedConcepts: string[] = []
+): KeywordMatchResult {
+  const answerKeywords = new Set(extractKeywords(answer));
+
+  const expectedKeywords = [
+    ...new Set(
+      expectedConcepts.flatMap((concept) =>
+        extractKeywords(concept)
+      )
+    ),
+  ];
+
+  const matchedKeywords = expectedKeywords.filter((keyword) =>
+    answerKeywords.has(keyword)
+  );
+
+  const missingKeywords = expectedKeywords.filter(
+    (keyword) => !answerKeywords.has(keyword)
+  );
+
+  const keywordCoverage =
+    expectedKeywords.length > 0
+      ? Math.round(
+          (matchedKeywords.length / expectedKeywords.length) * 100
+        )
+      : 0;
+
+  return {
+    matchedKeywords,
+    missingKeywords,
+    keywordCoverage,
+  };
+}
+
 function calculateRubric(
   question: string,
   answer: string
@@ -141,6 +184,7 @@ function calculateRubric(
   let specificity = 0;
 
   if (words >= 15) specificity = 1;
+
   if (words >= 30 && evidence.test(normalized)) {
     specificity = 2;
   }
@@ -160,15 +204,17 @@ function calculateRubric(
   // 4. Relevance
   const questionKeywords = extractKeywords(question);
 
-  const matchedKeywords = questionKeywords.filter((keyword) =>
-    normalized.includes(keyword)
+  const answerKeywordSet = new Set(extractKeywords(answer));
+
+  const matchedQuestionKeywords = questionKeywords.filter(
+    (keyword) => answerKeywordSet.has(keyword)
   );
 
   let relevance = 0;
 
   if (questionKeywords.length > 0) {
     const relevanceRatio =
-      matchedKeywords.length / questionKeywords.length;
+      matchedQuestionKeywords.length / questionKeywords.length;
 
     relevance = Math.min(5, Math.round(relevanceRatio * 5));
   } else {
@@ -220,6 +266,11 @@ function evaluateAnswer(
   const rubric = calculateRubric(questionText, answer);
 
   const conceptResults = matchExpectedConcepts(
+    answer,
+    expectedConcepts
+  );
+
+  const keywordResults = analyzeKeywords(
     answer,
     expectedConcepts
   );
@@ -303,6 +354,19 @@ function evaluateAnswer(
     }
   }
 
+  // Keyword analysis feedback
+  if (keywordResults.matchedKeywords.length > 0) {
+    strengths.push(
+      `Relevant keywords identified: ${keywordResults.matchedKeywords.join(", ")}.`
+    );
+  }
+
+  if (keywordResults.missingKeywords.length > 0) {
+    improvements.push(
+      `Consider including these relevant keywords where appropriate: ${keywordResults.missingKeywords.join(", ")}.`
+    );
+  }
+
   if (countWords(answer) < 10) {
     improvements.push(
       "Provide a fuller response that directly addresses the interview question."
@@ -326,6 +390,9 @@ function evaluateAnswer(
     matchedConcepts: conceptResults.matchedConcepts,
     missingConcepts: conceptResults.missingConcepts,
     conceptCoverage: conceptResults.conceptCoverage,
+    matchedKeywords: keywordResults.matchedKeywords,
+    missingKeywords: keywordResults.missingKeywords,
+    keywordCoverage: keywordResults.keywordCoverage,
   };
 }
 

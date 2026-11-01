@@ -48,6 +48,9 @@ export interface QuestionEvaluation {
   matchedConcepts: string[];
   missingConcepts: string[];
   conceptCoverage: number;
+    matchedKeywords: string[];
+  missingKeywords: string[];
+  keywordCoverage: number;
 }
 
 export interface InterviewEvaluation {
@@ -156,6 +159,20 @@ const QuestionEvaluationSchema = new Schema<QuestionEvaluation>(
       default: [],
     },
     conceptCoverage: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100,
+    },
+        matchedKeywords: {
+      type: [String],
+      default: [],
+    },
+    missingKeywords: {
+      type: [String],
+      default: [],
+    },
+    keywordCoverage: {
       type: Number,
       default: 0,
       min: 0,
