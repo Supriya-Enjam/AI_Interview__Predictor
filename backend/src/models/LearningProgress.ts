@@ -19,6 +19,12 @@ export interface ILearningTask {
   progress: number;
   /** Timestamp when the task was marked completed. */
   completedAt?: Date;
+
+    /** Task creation timestamp. */
+  createdAt?: Date;
+
+  /** Last task update timestamp. */
+  updatedAt?: Date;
 }
 
 /** Main learning‑progress document – one per candidate. */

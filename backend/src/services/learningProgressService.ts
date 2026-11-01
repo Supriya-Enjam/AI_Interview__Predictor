@@ -1,5 +1,5 @@
 
-import mongoose, { Types } from "mongoose";
+import { Types } from "mongoose";
 import {
   LearningProgress,
   type ILearningTask,
@@ -60,6 +60,7 @@ export async function updateTask(
 
   const updateFields: Record<string, unknown> = {};
 
+  // Update basic task details.
   if (updates.title !== undefined) {
     updateFields["tasks.$.title"] = updates.title;
   }
@@ -72,20 +73,31 @@ export async function updateTask(
     updateFields["tasks.$.priority"] = updates.priority;
   }
 
-  if (updates.status !== undefined) {
-    updateFields["tasks.$.status"] = updates.status;
-
-    updateFields["tasks.$.completedAt"] =
-      updates.status === "completed" ? new Date() : null;
-  }
-
   if (updates.estimatedDuration !== undefined) {
     updateFields["tasks.$.estimatedDuration"] =
       updates.estimatedDuration;
   }
 
-  if (updates.progress !== undefined) {
+  // Synchronize task status, progress, and completion date.
+  if (updates.status === "completed") {
+    updateFields["tasks.$.status"] = "completed";
+    updateFields["tasks.$.progress"] = 100;
+    updateFields["tasks.$.completedAt"] = new Date();
+  } else if (updates.status === "pending") {
+    updateFields["tasks.$.status"] = "pending";
+    updateFields["tasks.$.progress"] =
+      updates.progress !== undefined ? updates.progress : 0;
+    updateFields["tasks.$.completedAt"] = null;
+  } else if (updates.progress !== undefined) {
     updateFields["tasks.$.progress"] = updates.progress;
+
+    if (updates.progress === 100) {
+      updateFields["tasks.$.status"] = "completed";
+      updateFields["tasks.$.completedAt"] = new Date();
+    } else {
+      updateFields["tasks.$.status"] = "pending";
+      updateFields["tasks.$.completedAt"] = null;
+    }
   }
 
   if (Object.keys(updateFields).length === 0) {
@@ -137,7 +149,7 @@ export async function deleteTask(
   return result.modifiedCount > 0;
 }
 
-/** Legacy: replace the completedTopics array. */
+/** Replace the completedTopics array. */
 export async function setCompletedTopics(
   userId: string,
   topics: string[]
