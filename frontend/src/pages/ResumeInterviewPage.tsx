@@ -145,39 +145,48 @@ export default function ResumeInterviewPage({
     }
   }
 
-  async function handleGenerateQuestions() {
-    if (!file) {
-      setError("Please select your resume first.");
-      return;
-    }
-
-    if (!token) {
-      setError("Your session is missing. Please log in again.");
-      return;
-    }
-
-    setLoading(true);
-    setError("");
-    setSuccess("");
-    setQuestions([]);
-
-    try {
-      const response = await generateResumeQuestions(token, file);
-
-      setQuestions(response.data.questions);
-      setFileType(response.data.fileType);
-      setCharacterCount(response.data.characterCount);
-      setSuccess(response.message);
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Unable to generate resume questions."
-      );
-    } finally {
-      setLoading(false);
-    }
+async function handleGenerateQuestions() {
+  if (!file) {
+    setError("Please select your resume first.");
+    return;
   }
+
+  if (!token) {
+    setError("Your session is missing. Please log in again.");
+    return;
+  }
+
+  if (targetRole.trim().length < 2 || targetRole.trim().length > 100) {
+    setError("Enter a job role between 2 and 100 characters.");
+    return;
+  }
+
+  setLoading(true);
+  setError("");
+  setSuccess("");
+  setQuestions([]);
+
+  try {
+    const response = await generateResumeQuestions(token, file, {
+      targetRole: targetRole.trim(),
+      category,
+      difficulty,
+    });
+
+    setQuestions(response.data.questions);
+    setFileType(response.data.fileType);
+    setCharacterCount(response.data.characterCount);
+    setSuccess(response.message);
+  } catch (err) {
+    setError(
+      err instanceof Error
+        ? err.message
+        : "Unable to generate resume questions."
+    );
+  } finally {
+    setLoading(false);
+  }
+}
 
   async function handleStartInterview() {
     if (!file) {
@@ -598,8 +607,8 @@ export default function ResumeInterviewPage({
                   <div className="flex items-center gap-2 text-violet-300">
                     <Sparkles size={19} />
                     <span className="text-sm font-semibold">
-                      AI Resume Analysis
-                    </span>
+  Rule-Based Resume Analysis
+</span>
                   </div>
 
                   <h2 className="mt-3 text-2xl font-bold">

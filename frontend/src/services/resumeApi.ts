@@ -11,6 +11,9 @@ export interface ResumeQuestionResponse {
   data: {
     fileType: "pdf" | "docx";
     characterCount: number;
+    targetRole: string;
+    category: ResumeInterviewConfig["category"];
+    difficulty: ResumeInterviewConfig["difficulty"];
     questions: string[];
   };
 }
@@ -129,11 +132,18 @@ async function getResponseData<T>(
 
 export async function generateResumeQuestions(
   token: string,
-  file: File
+  file: File,
+  config: Pick<
+    ResumeInterviewConfig,
+    "targetRole" | "category" | "difficulty"
+  >
 ): Promise<ResumeQuestionResponse> {
   const formData = new FormData();
 
   formData.append("resume", file);
+  formData.append("targetRole", config.targetRole);
+  formData.append("category", config.category);
+  formData.append("difficulty", config.difficulty);
 
   const response = await fetch(`${API_BASE_URL}/questions`, {
     method: "POST",
@@ -148,7 +158,6 @@ export async function generateResumeQuestions(
     "Resume upload failed"
   );
 }
-
 // =========================================================
 // ANALYZE RESUME
 // =========================================================

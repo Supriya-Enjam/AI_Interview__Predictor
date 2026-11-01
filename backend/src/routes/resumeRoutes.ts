@@ -261,7 +261,12 @@ const resumeSkillLibrary: ResumeSkill[] = [
   },
   {
     name: "Linux",
-    concepts: ["commands", "file permissions", "shell scripting", "process management"],
+    concepts: [
+      "commands",
+      "file permissions",
+      "shell scripting",
+      "process management",
+    ],
   },
   {
     name: "Git",
@@ -334,149 +339,7 @@ function extractProjectDetails(text: string): string[] {
 }
 
 // =========================================================
-// RESUME QUESTION GENERATION
-// =========================================================
-
-function generateResumeQuestions(
-  text: string,
-  category: ResumeInterviewCategory = "mixed"
-): GeneratedResumeQuestion[] {
-  const skills = detectResumeSkills(text);
-  const projects = extractProjectDetails(text);
-
-  const questions: GeneratedResumeQuestion[] = [];
-
-  const addQuestion = (
-    questionText: string,
-    questionCategory: ResumeQuestionCategory,
-    questionSkills: string[] = [],
-    expectedConcepts: string[] = []
-  ) => {
-    questions.push({
-      questionText,
-      category: questionCategory,
-      skills: questionSkills,
-      expectedConcepts,
-    });
-  };
-
-  if (category === "mixed" || category === "hr") {
-    addQuestion(
-      "Walk me through your resume and explain how your experience prepares you for this role.",
-      "hr",
-      [],
-      ["career experience", "relevant skills", "career goals"]
-    );
-  }
-
-  if (
-    category === "mixed" ||
-    category === "behavioral" ||
-    category === "situational"
-  ) {
-    addQuestion(
-      "Which project or achievement on your resume best demonstrates your problem-solving skills? Explain your contribution.",
-      "behavioral",
-      [],
-      ["problem solving", "individual contribution", "project outcome"]
-    );
-
-    addQuestion(
-      "Describe a challenging problem you encountered in a project listed on your resume and how you solved it.",
-      "behavioral",
-      [],
-      ["challenge identification", "problem solving", "solution implementation"]
-    );
-  }
-
-  if (
-    category === "mixed" ||
-    category === "technical" ||
-    category === "coding"
-  ) {
-    for (const skill of skills.slice(0, 5)) {
-      addQuestion(
-        `Your resume mentions ${skill.name}. Explain how you have used it and describe a practical challenge you solved with it.`,
-        category === "mixed" ? "technical" : category,
-        [skill.name],
-        skill.concepts
-      );
-    }
-  }
-
-  if (
-    category === "mixed" ||
-    category === "technical" ||
-    category === "behavioral" ||
-    category === "coding"
-  ) {
-    for (const project of projects.slice(0, 2)) {
-      const projectSkills = skills
-        .filter((skill) =>
-          project.toLowerCase().includes(skill.name.toLowerCase())
-        )
-        .map((skill) => skill.name);
-
-      addQuestion(
-        `Your resume includes the experience "${project}". What was your specific contribution, what technical decisions did you make, and what was the result?`,
-        category === "mixed" ? "technical" : category,
-        projectSkills,
-        [
-          "project architecture",
-          "individual contribution",
-          "technical decisions",
-          "project outcome",
-        ]
-      );
-    }
-  }
-
-  if (
-    category === "mixed" ||
-    category === "hr" ||
-    category === "behavioral"
-  ) {
-    addQuestion(
-      "Which skill on your resume would you most like to improve, and what steps are you taking to develop it?",
-      category === "mixed" ? "behavioral" : category,
-      [],
-      ["self-awareness", "continuous learning", "professional development"]
-    );
-  }
-
-  if (questions.length === 0) {
-    const fallbackCategory: ResumeQuestionCategory =
-      category === "mixed" ? "technical" : category;
-
-    addQuestion(
-      "Explain the most important skills and experiences you have included in your resume.",
-      fallbackCategory,
-      [],
-      ["relevant skills", "professional experience"]
-    );
-
-    addQuestion(
-      "Describe a project or achievement that demonstrates your ability to learn and solve problems.",
-      fallbackCategory,
-      [],
-      ["problem solving", "learning ability", "project experience"]
-    );
-  }
-
-  const uniqueQuestions = [
-    ...new Map(
-      questions.map((question) => [
-        question.questionText.toLowerCase(),
-        question,
-      ])
-    ).values(),
-  ];
-
-  return uniqueQuestions.slice(0, 10);
-}
-
-// =========================================================
-// RESUME ROLE REQUIREMENTS
+// ROLE REQUIREMENTS
 // =========================================================
 
 const roleSkillRequirements: Record<string, string[]> = {
@@ -554,6 +417,259 @@ function getRoleSkills(targetRole: string): string[] {
 }
 
 // =========================================================
+// RESUME QUESTION GENERATION
+// =========================================================
+
+function generateResumeQuestions(
+  text: string,
+  category: ResumeInterviewCategory = "mixed",
+  targetRole = "Software Engineer",
+  difficulty: ResumeInterviewDifficulty = "intermediate"
+): GeneratedResumeQuestion[] {
+  const detectedSkills = detectResumeSkills(text);
+  const projects = extractProjectDetails(text);
+  const roleSkills = getRoleSkills(targetRole);
+
+  // Prioritize skills relevant to the selected job role.
+  const relevantSkills = [
+    ...detectedSkills.filter((skill) =>
+      roleSkills.some(
+        (roleSkill) =>
+          roleSkill.toLowerCase() === skill.name.toLowerCase()
+      )
+    ),
+    ...detectedSkills.filter(
+      (skill) =>
+        !roleSkills.some(
+          (roleSkill) =>
+            roleSkill.toLowerCase() === skill.name.toLowerCase()
+        )
+    ),
+  ];
+
+  const questions: GeneratedResumeQuestion[] = [];
+
+  const addQuestion = (
+    questionText: string,
+    questionCategory: ResumeQuestionCategory,
+    questionSkills: string[] = [],
+    expectedConcepts: string[] = []
+  ) => {
+    questions.push({
+      questionText,
+      category: questionCategory,
+      skills: questionSkills,
+      expectedConcepts,
+    });
+  };
+
+  const difficultyInstructions: Record<
+    ResumeInterviewDifficulty,
+    string
+  > = {
+    beginner:
+      "Explain your answer clearly and include a simple practical example.",
+    intermediate:
+      "Explain your approach, discuss a practical challenge, and justify your decisions.",
+    advanced:
+      "Discuss architecture, trade-offs, performance, scalability, and possible failure scenarios where relevant.",
+  };
+
+  const difficultyInstruction = difficultyInstructions[difficulty];
+
+  // HR QUESTIONS
+  if (category === "mixed" || category === "hr") {
+    addQuestion(
+      `Walk me through your resume and explain how your experience prepares you for the ${targetRole} position.`,
+      "hr",
+      [],
+      ["career experience", "relevant skills", "career goals"]
+    );
+
+    addQuestion(
+      `Why are you interested in working as a ${targetRole}, and how does your background support this career goal?`,
+      "hr",
+      [],
+      ["career motivation", "role understanding", "career goals"]
+    );
+  }
+
+  // BEHAVIORAL QUESTIONS
+  if (category === "mixed" || category === "behavioral") {
+    addQuestion(
+      "Describe a challenging situation you faced while working on a project from your resume. What was your responsibility, what action did you take, and what was the outcome?",
+      "behavioral",
+      [],
+      ["situation", "individual responsibility", "action", "result"]
+    );
+
+    addQuestion(
+      "Tell me about a time you had to learn a new technology or skill to complete a project. How did you approach the learning process?",
+      "behavioral",
+      [],
+      ["learning ability", "adaptability", "problem solving"]
+    );
+
+    addQuestion(
+      "Which achievement in your resume are you most proud of, and what was your individual contribution?",
+      "behavioral",
+      [],
+      ["individual contribution", "ownership", "project outcome"]
+    );
+  }
+
+  // SITUATIONAL QUESTIONS
+  if (category === "situational") {
+    addQuestion(
+      `Imagine you have joined a team as a ${targetRole} and are assigned a task involving a technology you have not used before. How would you understand the requirement, learn what is needed, and complete the task?`,
+      "situational",
+      [],
+      ["requirement analysis", "learning ability", "planning", "problem solving"]
+    );
+
+    addQuestion(
+      "Suppose a project deadline is approaching, but you discover a serious issue in your implementation. How would you communicate the issue and decide what to do next?",
+      "situational",
+      [],
+      ["prioritization", "communication", "risk management", "problem solving"]
+    );
+
+    addQuestion(
+      "Imagine a teammate disagrees with your technical approach. How would you evaluate both approaches and reach a decision?",
+      "situational",
+      [],
+      ["teamwork", "technical reasoning", "communication", "decision making"]
+    );
+  }
+
+  // TECHNICAL AND CODING QUESTIONS
+  if (
+    category === "mixed" ||
+    category === "technical" ||
+    category === "coding"
+  ) {
+    for (const skill of relevantSkills.slice(0, 5)) {
+      if (category === "coding") {
+        addQuestion(
+          `Your resume mentions ${skill.name}. Create a small practical coding solution using ${skill.name} that demonstrates ${skill.concepts[0]}. ${difficultyInstruction}`,
+          "coding",
+          [skill.name],
+          skill.concepts
+        );
+      } else {
+        let questionText: string;
+
+        if (difficulty === "beginner") {
+          questionText =
+            `Your resume mentions ${skill.name}. Explain its main purpose and how you have used it in a project. ${difficultyInstruction}`;
+        } else if (difficulty === "intermediate") {
+          questionText =
+            `Your resume mentions ${skill.name}. Explain how you implemented it, describe a challenge you encountered, and explain how you solved it. ${difficultyInstruction}`;
+        } else {
+          questionText =
+            `Your resume mentions ${skill.name}. Explain its internal concepts, discuss important design or implementation trade-offs, and describe how you would improve a solution built with it for a production environment. ${difficultyInstruction}`;
+        }
+
+        addQuestion(
+          questionText,
+          "technical",
+          [skill.name],
+          skill.concepts
+        );
+      }
+    }
+  }
+
+  // PROJECT-BASED QUESTIONS
+  if (
+    category === "mixed" ||
+    category === "technical" ||
+    category === "behavioral" ||
+    category === "coding"
+  ) {
+    for (const project of projects.slice(0, 2)) {
+      const projectSkills = detectedSkills
+        .filter((skill) =>
+          project.toLowerCase().includes(skill.name.toLowerCase())
+        )
+        .map((skill) => skill.name);
+
+      let projectQuestion: string;
+
+      if (difficulty === "beginner") {
+        projectQuestion =
+          `Your resume includes the project "${project}". Explain what the project does, your contribution, and the technologies you used.`;
+      } else if (difficulty === "intermediate") {
+        projectQuestion =
+          `Your resume includes the project "${project}". Explain its architecture, your individual contribution, the challenges you faced, and how you solved them.`;
+      } else {
+        projectQuestion =
+          `Your resume includes the project "${project}". Evaluate its architecture and technical decisions. What limitations did you encounter, how would you improve its scalability and reliability, and what alternatives did you consider?`;
+      }
+
+      addQuestion(
+        projectQuestion,
+        category === "behavioral" ? "behavioral" : "technical",
+        projectSkills,
+        [
+          "project architecture",
+          "individual contribution",
+          "technical decisions",
+          "problem solving",
+          "project outcome",
+        ]
+      );
+    }
+  }
+
+  // SELF-IMPROVEMENT QUESTIONS
+  if (
+    category === "mixed" ||
+    category === "hr" ||
+    category === "behavioral"
+  ) {
+    addQuestion(
+      "Which skill relevant to your target role would you most like to improve, and what specific steps are you taking to develop it?",
+      category === "hr" ? "hr" : "behavioral",
+      [],
+      ["self-awareness", "continuous learning", "professional development"]
+    );
+  }
+
+  // FALLBACK QUESTIONS
+  if (questions.length === 0) {
+    const fallbackCategory: ResumeQuestionCategory =
+      category === "mixed" ? "technical" : category;
+
+    addQuestion(
+      `Explain the most important skills and experiences in your resume and how they prepare you for the ${targetRole} role. ${difficultyInstruction}`,
+      fallbackCategory,
+      [],
+      ["relevant skills", "professional experience", "role understanding"]
+    );
+
+    addQuestion(
+      "Describe a project or achievement that demonstrates your ability to learn and solve problems.",
+      fallbackCategory,
+      [],
+      ["problem solving", "learning ability", "project experience"]
+    );
+  }
+
+  // REMOVE DUPLICATE QUESTIONS
+  const uniqueQuestions = [
+    ...new Map(
+      questions.map((question) => [
+        question.questionText.toLowerCase(),
+        question,
+      ])
+    ).values(),
+  ];
+
+  return uniqueQuestions.slice(0, 10);
+}
+
+// =========================================================
 // RESUME SECTION EXTRACTION
 // =========================================================
 
@@ -620,9 +736,7 @@ function extractResumeSections(text: string): ResumeSections {
 
 function analyzeResume(text: string, targetRole: string) {
   const detectedSkills = detectResumeSkills(text);
-
   const detectedSkillNames = detectedSkills.map((skill) => skill.name);
-
   const requiredSkills = getRoleSkills(targetRole);
 
   const matchedSkills = requiredSkills.filter((required) =>
@@ -758,7 +872,6 @@ const validDifficulties: ResumeInterviewDifficulty[] = [
 
 // =========================================================
 // POST /api/resumes/analysis
-// ANALYZE RESUME AGAINST TARGET ROLE
 // =========================================================
 
 router.post(
@@ -781,10 +894,7 @@ router.post(
       }
 
       const extracted = await readResume(req, res);
-
-      if (!extracted) {
-        return;
-      }
+      if (!extracted) return;
 
       const analysis = analyzeResume(extracted.text, targetRole);
 
@@ -820,15 +930,57 @@ router.post(
   handleResumeUpload,
   async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
-      const extracted = await readResume(req, res);
+      const targetRole =
+        typeof req.body.targetRole === "string"
+          ? req.body.targetRole.trim()
+          : "Software Engineer";
 
-      if (!extracted) {
+      const category =
+        typeof req.body.category === "string"
+          ? req.body.category
+          : "mixed";
+
+      const difficulty =
+        typeof req.body.difficulty === "string"
+          ? req.body.difficulty
+          : "intermediate";
+
+      if (targetRole.length < 2 || targetRole.length > 100) {
+        res.status(400).json({
+          success: false,
+          message: "Enter a job role between 2 and 100 characters.",
+        });
         return;
       }
 
+      if (!validCategories.includes(category as ResumeInterviewCategory)) {
+        res.status(400).json({
+          success: false,
+          message: "Select a valid interview category.",
+        });
+        return;
+      }
+
+      if (
+        !validDifficulties.includes(
+          difficulty as ResumeInterviewDifficulty
+        )
+      ) {
+        res.status(400).json({
+          success: false,
+          message: "Select a valid interview difficulty.",
+        });
+        return;
+      }
+
+      const extracted = await readResume(req, res);
+      if (!extracted) return;
+
       const generatedQuestions = generateResumeQuestions(
         extracted.text,
-        "mixed"
+        category as ResumeInterviewCategory,
+        targetRole,
+        difficulty as ResumeInterviewDifficulty
       );
 
       res.status(200).json({
@@ -837,6 +989,9 @@ router.post(
         data: {
           fileType: extracted.fileType,
           characterCount: extracted.characterCount,
+          targetRole,
+          category,
+          difficulty,
           questions: generatedQuestions.map(
             (question) => question.questionText
           ),
@@ -915,14 +1070,13 @@ router.post(
       }
 
       const extracted = await readResume(req, res);
-
-      if (!extracted) {
-        return;
-      }
+      if (!extracted) return;
 
       const generatedQuestions = generateResumeQuestions(
         extracted.text,
-        category as ResumeInterviewCategory
+        category as ResumeInterviewCategory,
+        targetRole,
+        difficulty as ResumeInterviewDifficulty
       );
 
       if (!req.userId) {

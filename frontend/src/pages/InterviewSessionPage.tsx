@@ -45,12 +45,6 @@ export default function InterviewSessionPage({
 
         if (cancelled) return;
 
-        if (result.status === "completed") {
-          setInterview(result);
-          setCompleted(true);
-          return;
-        }
-
         if (result.questions.length === 0) {
           setError("This interview has no questions available.");
           return;
@@ -58,6 +52,7 @@ export default function InterviewSessionPage({
 
         setInterview(result);
 
+        // Restore answers saved in the backend.
         const backendAnswers: Record<string, string> = {};
 
         result.questions.forEach((question) => {
@@ -66,6 +61,7 @@ export default function InterviewSessionPage({
           }
         });
 
+        // Restore answers saved in the browser.
         let browserAnswers: Record<string, string> = {};
 
         const savedAnswers = sessionStorage.getItem(
@@ -80,13 +76,21 @@ export default function InterviewSessionPage({
           }
         }
 
+        // Backend answers take priority over older browser answers.
         const mergedAnswers = {
-          ...backendAnswers,
           ...browserAnswers,
+          ...backendAnswers,
         };
 
         setAnswers(mergedAnswers);
 
+        // Restore completed interview state after restoring answers.
+        if (result.status === "completed") {
+          setCompleted(true);
+          return;
+        }
+
+        // Keep active interview answers synchronized with session storage.
         try {
           sessionStorage.setItem(
             `interviewiq_answers_${id}`,
@@ -489,10 +493,7 @@ export default function InterviewSessionPage({
             />
 
             <div className="mt-2 flex justify-between text-xs text-slate-500">
-              <span>
-                Leave blank to skip this question.
-              </span>
-
+              <span>Leave blank to skip this question.</span>
               <span>{currentAnswer.length}/10000</span>
             </div>
 
