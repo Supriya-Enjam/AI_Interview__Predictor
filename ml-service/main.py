@@ -1,5 +1,6 @@
 
 from pathlib import Path
+import json
 
 import joblib
 import numpy as np
@@ -13,6 +14,7 @@ app = FastAPI(
 )
 
 MODEL_PATH = Path(__file__).parent / "model" / "interview_model.joblib"
+METRICS_PATH = Path(__file__).parent / "model" / "model_metrics.json"
 
 
 class InterviewFeatures(BaseModel):
@@ -38,7 +40,35 @@ def health():
         "service": "InterviewIQ ML Service",
         "model_loaded": MODEL_PATH.exists(),
     }
+@app.get("/model-info")
+def model_info():
+    if not MODEL_PATH.exists():
+        raise HTTPException(
+            status_code=503,
+            detail="ML model has not been trained yet.",
+        )
 
+    if not METRICS_PATH.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="Model evaluation metrics are not available. Train the model first.",
+        )
+
+    try:
+        with open(METRICS_PATH, "r", encoding="utf-8") as metrics_file:
+            metrics = json.load(metrics_file)
+
+        return {
+            "success": True,
+            "model_loaded": True,
+            "metrics": metrics,
+        }
+
+    except (json.JSONDecodeError, OSError) as error:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Unable to read model metrics: {str(error)}",
+        )
 
 @app.post("/predict")
 def predict(features: InterviewFeatures):

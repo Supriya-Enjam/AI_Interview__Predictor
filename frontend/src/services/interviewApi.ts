@@ -77,6 +77,14 @@ export interface QuestionEvaluationSummary {
 };
 }
 
+export interface MLPredictionSummary {
+  predictedScore: number;
+  predictionType: string;
+  notice: string;
+  predictedAt: string;
+  featureSource: "rubric";
+}
+
 export interface InterviewEvaluationSummary {
   overallScore: number;
   maxScore: number;
@@ -87,6 +95,9 @@ export interface InterviewEvaluationSummary {
   questionEvaluations: QuestionEvaluationSummary[];
   evaluatedAt: string;
   evaluationMethod: "rubric";
+
+  // Experimental ML prediction
+  mlPrediction?: MLPredictionSummary;
 }
 
 export interface InterviewSession {

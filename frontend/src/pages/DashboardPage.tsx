@@ -274,6 +274,48 @@ export default function DashboardPage({ token }: DashboardPageProps) {
     );
   }, [readiness, scoredInterviews]);
 
+    // Completed interviews that have an ML prediction.
+  const mlPredictedInterviews = useMemo(
+    () =>
+      completedInterviews
+        .filter(
+          (item) =>
+            typeof item.evaluation?.mlPrediction?.predictedScore ===
+            "number"
+        )
+        .sort(
+          (a, b) =>
+            new Date(a.completedAt ?? a.createdAt).getTime() -
+            new Date(b.completedAt ?? b.createdAt).getTime()
+        ),
+    [completedInterviews]
+  );
+
+  // Average ML predicted score.
+  const averageMLScore = useMemo(() => {
+    if (!mlPredictedInterviews.length) {
+      return null;
+    }
+
+    return (
+      mlPredictedInterviews.reduce(
+        (sum, item) =>
+          sum + (item.evaluation?.mlPrediction?.predictedScore ?? 0),
+        0
+      ) / mlPredictedInterviews.length
+    );
+  }, [mlPredictedInterviews]);
+
+  // Latest ML prediction.
+  const latestMLInterview =
+    mlPredictedInterviews[mlPredictedInterviews.length - 1] ?? null;
+
+  const latestMLScore =
+    typeof latestMLInterview?.evaluation?.mlPrediction?.predictedScore ===
+    "number"
+      ? latestMLInterview.evaluation.mlPrediction.predictedScore
+      : null;
+
   // Actual backend readiness score, separate from average score.
   const readinessScore =
     typeof readiness?.score === "number"
@@ -510,6 +552,85 @@ export default function DashboardPage({ token }: DashboardPageProps) {
             iconStyle="bg-amber-500/10 text-amber-300"
             onClick={() => navigate("/profile")}
           />
+        </div>
+      </section>
+
+            {/* AI/ML prediction overview */}
+      <section>
+        <div className="mb-4">
+          <h2 className="text-lg font-bold text-white">
+            AI/ML Prediction Overview
+          </h2>
+
+          <p className="mt-1 text-sm text-slate-500">
+            Experimental machine-learning estimates from your completed interviews
+          </p>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <StatCard
+            title="Average ML predicted score"
+            value={
+              averageMLScore === null
+                ? "—"
+                : `${averageMLScore.toFixed(1)}%`
+            }
+            detail={
+              mlPredictedInterviews.length
+                ? `Across ${mlPredictedInterviews.length} ML predictions`
+                : "No ML predictions available yet"
+            }
+            icon={<BrainCircuit size={20} />}
+            iconStyle="bg-violet-500/10 text-violet-300"
+          />
+
+          <StatCard
+            title="Total ML predictions"
+            value={
+              historyLoading
+                ? "…"
+                : String(mlPredictedInterviews.length)
+            }
+            detail="Completed interviews with an ML estimate"
+            icon={<BarChart3 size={20} />}
+            iconStyle="bg-indigo-500/10 text-indigo-300"
+          />
+
+          <StatCard
+            title="Latest ML prediction"
+            value={
+              latestMLScore === null
+                ? "—"
+                : `${latestMLScore.toFixed(1)}%`
+            }
+            detail={
+              latestMLInterview
+                ? formatDate(
+                    latestMLInterview.completedAt ??
+                    latestMLInterview.createdAt
+                  )
+                : "No prediction available yet"
+            }
+            icon={<TrendingUp size={20} />}
+            iconStyle="bg-emerald-500/10 text-emerald-300"
+          />
+        </div>
+
+        <div className="mt-4 flex items-start gap-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
+          <CircleAlert
+            size={18}
+            className="mt-0.5 shrink-0 text-amber-300"
+          />
+
+          <p className="text-xs leading-6 text-slate-400">
+            <span className="font-semibold text-amber-200">
+              Experimental prediction:
+            </span>{" "}
+            ML scores are estimates generated from rubric-based features
+            and synthetic training data. They are not validated measures
+            of real-world interview performance. Your rubric evaluation
+            remains the primary interview assessment.
+          </p>
         </div>
       </section>
 

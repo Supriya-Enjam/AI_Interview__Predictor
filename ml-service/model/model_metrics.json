@@ -1,0 +1,20 @@
+{
+    "model_name": "Random Forest Regressor",
+    "model_type": "experimental_synthetic_data_model",
+    "features": [
+        "completeness_score",
+        "structure_score",
+        "specificity_score",
+        "relevance_score",
+        "communication_score"
+    ],
+    "training_samples": 960,
+    "test_samples": 240,
+    "total_samples": 1200,
+    "mae": 3.39,
+    "rmse": 4.24,
+    "r2_score": 0.8407,
+    "training_data": "synthetic",
+    "trained_at": "2026-11-02T10:48:44.111177+00:00",
+    "notice": "These metrics are calculated using synthetic training data. They do not establish real-world model accuracy."
+}

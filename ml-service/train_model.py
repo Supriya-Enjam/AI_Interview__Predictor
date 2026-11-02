@@ -1,5 +1,6 @@
 
 from pathlib import Path
+import json
 
 import joblib
 import numpy as np
@@ -12,6 +13,7 @@ from sklearn.preprocessing import StandardScaler
 BASE_DIR = Path(__file__).parent
 MODEL_DIR = BASE_DIR / "model"
 MODEL_PATH = MODEL_DIR / "interview_model.joblib"
+METRICS_PATH = MODEL_DIR / "model_metrics.json"
 
 FEATURE_NAMES = [
     "completeness_score",
@@ -71,6 +73,29 @@ def train():
 
     joblib.dump(model, MODEL_PATH)
 
+    metrics = {
+        "model_name": "Random Forest Regressor",
+        "model_type": "experimental_synthetic_data_model",
+        "features": FEATURE_NAMES,
+        "training_samples": int(len(X_train)),
+        "test_samples": int(len(X_test)),
+        "total_samples": int(len(X)),
+        "mae": round(float(mae), 2),
+        "rmse": round(float(rmse), 2),
+        "r2_score": round(float(r2), 4),
+        "training_data": "synthetic",
+        "trained_at": __import__("datetime").datetime.now(
+            __import__("datetime").timezone.utc
+        ).isoformat(),
+        "notice": (
+            "These metrics are calculated using synthetic training data. "
+            "They do not establish real-world model accuracy."
+        ),
+    }
+
+    with open(METRICS_PATH, "w", encoding="utf-8") as metrics_file:
+        json.dump(metrics, metrics_file, indent=4)
+
     print("\nInterviewIQ ML training completed.")
     print("-----------------------------------")
     print(f"Features:         {FEATURE_NAMES}")
@@ -80,6 +105,7 @@ def train():
     print(f"RMSE:             {rmse:.2f}")
     print(f"R2 score:         {r2:.4f}")
     print(f"Saved model:      {MODEL_PATH}")
+    print(f"Saved metrics:    {METRICS_PATH}")
     print("\nWARNING: Synthetic training data only.")
     print("Metrics do not establish real-world accuracy.")
 

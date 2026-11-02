@@ -222,6 +222,26 @@ export default function InterviewHistoryPage({
       }));
   }, [interviews]);
 
+  // Calculate ML prediction trend over time.
+  const mlPredictionTrend = useMemo(() => {
+    return interviews
+      .filter(
+        (item) =>
+          item.status === "completed" &&
+          typeof item.evaluation?.mlPrediction?.predictedScore === "number"
+      )
+      .sort(
+        (a, b) =>
+          new Date(a.createdAt).getTime() -
+          new Date(b.createdAt).getTime()
+      )
+      .map((item, index) => ({
+        interview: index + 1,
+        date: new Date(item.createdAt).toLocaleDateString(),
+        score: item.evaluation?.mlPrediction?.predictedScore ?? 0,
+      }));
+  }, [interviews]);
+
   const handleExportCSV = () => {
   if (filteredInterviews.length === 0) {
     return;
@@ -237,10 +257,12 @@ export default function InterviewHistoryPage({
     "Answered Questions",
     "Skipped Questions",
     "Total Questions",
-    "Score (%)",
+    "Rubric Score (%)",
+    "ML Predicted Score (%)",
+    "ML Prediction Type",
   ];
 
-  const rows = filteredInterviews.map((item) => [
+    const rows = filteredInterviews.map((item) => [
     item.targetRole,
     item.category,
     item.difficulty,
@@ -251,6 +273,8 @@ export default function InterviewHistoryPage({
     Math.max(0, item.totalQuestions - item.answeredQuestions),
     item.totalQuestions,
     item.evaluation?.percentage ?? "N/A",
+    item.evaluation?.mlPrediction?.predictedScore ?? "N/A",
+    item.evaluation?.mlPrediction?.predictionType ?? "N/A",
   ]);
 
   const escapeCSV = (value: unknown) => {
@@ -538,6 +562,64 @@ export default function InterviewHistoryPage({
   </div>
 </section>
 
+{/* ML Prediction Trend */}
+<section className="mt-8">
+  <h2 className="mb-4 text-xl font-bold">
+    AI/ML Prediction Trend
+  </h2>
+
+  <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+    {mlPredictionTrend.length === 0 ? (
+      <p className="text-sm text-slate-400">
+        Complete new interviews with the ML service running to view
+        your prediction trend.
+      </p>
+    ) : (
+      <>
+        <div className="mb-4 flex flex-wrap justify-between gap-2">
+          <p className="text-sm text-slate-400">
+            Experimental predictions from oldest to newest
+          </p>
+
+          <p className="text-sm text-slate-400">
+            {mlPredictionTrend.length} predictions
+          </p>
+        </div>
+
+        <div className="space-y-4">
+          {mlPredictionTrend.map((item) => (
+            <div key={`${item.interview}-${item.date}`}>
+              <div className="mb-2 flex justify-between gap-3 text-sm">
+                <span className="text-slate-300">
+                  Interview {item.interview} · {item.date}
+                </span>
+
+                <span className="font-semibold text-purple-300">
+                  {item.score.toFixed(1)}%
+                </span>
+              </div>
+
+              <div className="h-3 overflow-hidden rounded-full bg-slate-800">
+                <div
+                  className="h-full rounded-full bg-purple-500 transition-all"
+                  style={{
+                    width: `${Math.min(100, Math.max(0, item.score))}%`,
+                  }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </>
+    )}
+  </div>
+
+  <p className="mt-3 text-xs text-slate-500">
+    These are experimental model estimates based on rubric-derived
+    features, not validated measures of interview performance.
+  </p>
+</section>
+
 <div className="mt-6 flex justify-end">
   <button
     type="button"
@@ -651,9 +733,22 @@ export default function InterviewHistoryPage({
                           {capitalize(item.status.replace("_", " "))}
                         </span>
 
-                        {isCompleted && typeof item.evaluation?.percentage === "number" && (
+                                                {isCompleted && typeof item.evaluation?.percentage === "number" && (
                           <span className="rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-200">
-                            Score: {item.evaluation.percentage}%
+                            Rubric Score: {item.evaluation.percentage}%
+                          </span>
+                        )}
+
+                        {isCompleted && item.evaluation?.mlPrediction && (
+                          <span className="rounded-full border border-purple-500/30 bg-purple-500/10 px-3 py-1 text-xs font-semibold text-purple-200">
+                            ML Estimate:{" "}
+                            {item.evaluation.mlPrediction.predictedScore.toFixed(1)}%
+                          </span>
+                        )}
+
+                        {isCompleted && item.evaluation && !item.evaluation.mlPrediction && (
+                          <span className="rounded-full border border-slate-700 bg-slate-800 px-3 py-1 text-xs text-slate-400">
+                            ML Estimate: Not available
                           </span>
                         )}
                       </div>
