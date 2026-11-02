@@ -13,12 +13,30 @@ export interface QuestionBankAdminItem {
   skills: string[];
   expectedConcepts: string[];
   roleContext?: string;
+
+  // Dataset source information
+  sourceDatasetId?: string;
+  sourceRowKey?: string;
+  sourceDatasetName?: string;
 }
 
 export interface QuestionBankStats {
   totalQuestions: number;
   byCategory: Record<string, number>;
   byDifficulty: Record<string, number>;
+}
+
+export interface QuestionBankPagination {
+  page: number;
+  limit: number;
+  totalQuestions: number;
+  totalPages: number;
+}
+
+export interface QuestionBankResponse {
+  success: boolean;
+  questions: QuestionBankAdminItem[];
+  pagination: QuestionBankPagination;
 }
 
 // =========================================================
@@ -273,15 +291,22 @@ async function requestAdminApi(
 // QUESTION BANK API
 // =========================================================
 
+
 export async function getQuestionBank(
   token: string,
   filters: {
     category?: string;
     difficulty?: string;
     search?: string;
+    source?: "all" | "uploaded" | "manual";
+    page?: number;
+    limit?: number;
   } = {}
-): Promise<QuestionBankAdminItem[]> {
-  const params = new URLSearchParams();
+): Promise<QuestionBankResponse> {
+  const params = new URLSearchParams({
+    page: String(filters.page ?? 1),
+    limit: String(filters.limit ?? 10),
+  });
 
   if (filters.category && filters.category !== "all") {
     params.set("category", filters.category);
@@ -295,18 +320,27 @@ export async function getQuestionBank(
     params.set("search", filters.search.trim());
   }
 
+  if (filters.source && filters.source !== "all") {
+    params.set("source", filters.source);
+  }
+
   const data = await requestAdminApi(
-    `/questions${params.toString() ? `?${params.toString()}` : ""}`,
+    `/questions?${params.toString()}`,
     token,
     { method: "GET" }
   );
 
-  if (!Array.isArray(data.questions)) {
+  if (!Array.isArray(data.questions) || !data.pagination) {
     throw new Error("Invalid question bank response.");
   }
 
-  return data.questions as QuestionBankAdminItem[];
+  return {
+    success: true,
+    questions: data.questions as QuestionBankAdminItem[],
+    pagination: data.pagination as QuestionBankPagination,
+  };
 }
+
 
 export async function getQuestionBankStats(
   token: string

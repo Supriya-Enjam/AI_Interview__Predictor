@@ -166,116 +166,142 @@ const adminQuestionQuerySchema = z.object({
     "coding",
     "all",
   ]).optional(),
+
   difficulty: z.enum([
     "beginner",
     "intermediate",
     "advanced",
     "all",
   ]).optional(),
+
   search: z.string().trim().max(120).optional(),
-  source: z.enum(["all", "uploaded", "manual"]).optional(),
+
+  source: z.enum([
+    "all",
+    "uploaded",
+    "manual",
+  ]).optional(),
+
+  page: z.coerce.number().int().min(1).default(1),
+
+  limit: z.coerce.number().int().min(1).max(50).default(10),
 });
 
 // =========================================================
 // ADMIN QUESTION BANK
 // =========================================================
-
 router.get(
   "/questions",
   requireAdmin,
   async (req: Request, res: Response) => {
     try {
       const parsed = adminQuestionQuerySchema.safeParse(req.query);
+
       if (!parsed.success) {
-  res.status(400).json({
-    success: false,
-    message: "Invalid question-bank filters.",
-    errors: parsed.error.flatten(),
-  });
-  return;
-}
+        res.status(400).json({
+          success: false,
+          message: "Invalid question-bank filters.",
+          errors: parsed.error.flatten(),
+        });
+        return;
+      }
+
+      const {
+        category,
+        difficulty,
+        search,
+        source,
+        page,
+        limit,
+      } = parsed.data;
+
       const filter: Record<string, unknown> = {};
 
-      if (parsed.success) {
-        const { category, difficulty, search, source } = parsed.data;
+      if (category && category !== "all") {
+        filter.category = category;
+      }
 
-        if (category && category !== "all") {
-          filter.category = category;
+      if (difficulty && difficulty !== "all") {
+        filter.difficulty = difficulty;
+      }
+
+      if (source === "uploaded") {
+        filter.sourceDatasetId = {
+          $exists: true,
+          $nin: ["", null],
+        };
+      } else if (source === "manual") {
+        filter.$or = [
+          { sourceDatasetId: { $exists: false } },
+          { sourceDatasetId: null },
+          { sourceDatasetId: "" },
+        ];
+      }
+
+      if (search) {
+        const escapedSearch = search.replace(
+          /[.*+?^${}()|[\]\\]/g,
+          "\\$&"
+        );
+
+        const searchConditions = [
+          {
+            questionText: {
+              $regex: escapedSearch,
+              $options: "i",
+            },
+          },
+          {
+            skills: {
+              $regex: escapedSearch,
+              $options: "i",
+            },
+          },
+          {
+            expectedConcepts: {
+              $regex: escapedSearch,
+              $options: "i",
+            },
+          },
+          {
+            roleContext: {
+              $regex: escapedSearch,
+              $options: "i",
+            },
+          },
+        ];
+
+        if (filter.$or) {
+          filter.$and = [
+            { $or: filter.$or as Record<string, unknown>[] },
+            { $or: searchConditions },
+          ];
+
+          delete filter.$or;
+        } else {
+          filter.$or = searchConditions;
         }
+      }
 
-        if (difficulty && difficulty !== "all") {
-          filter.difficulty = difficulty;
-        }
+      const [questions, totalQuestions] = await Promise.all([
+        QuestionBankItem.find(filter)
+          .sort({ createdAt: -1 })
+          .skip((page - 1) * limit)
+          .limit(limit)
+          .lean(),
 
-        if (source === "uploaded") {
-  filter.sourceDatasetId = {
-    $exists: true,
-    $ne: "",
-  };
-} else if (source === "manual") {
-  filter.$or = [
-    { sourceDatasetId: { $exists: false } },
-    { sourceDatasetId: null },
-    { sourceDatasetId: "" },
-  ];
-}
-
-if (search) {
-  const escapedSearch = search.replace(
-    /[.*+?^${}()|[\]\\]/g,
-    "\\$&"
-  );
-
-  const searchConditions = [
-    {
-      questionText: {
-        $regex: escapedSearch,
-        $options: "i",
-      },
-    },
-    {
-      skills: {
-        $regex: escapedSearch,
-        $options: "i",
-      },
-    },
-    {
-      expectedConcepts: {
-        $regex: escapedSearch,
-        $options: "i",
-      },
-    },
-    {
-      roleContext: {
-        $regex: escapedSearch,
-        $options: "i",
-      },
-    },
-  ];
-
-  if (filter.$or) {
-    filter.$and = [
-      {
-        $or: filter.$or as Record<string, unknown>[],
-      },
-      {
-        $or: searchConditions,
-      },
-    ];
-
-    delete filter.$or;
-  } else {
-    filter.$or = searchConditions;
-  }
-}
-}
-      const questions = await QuestionBankItem.find(filter)
-        .sort({ createdAt: -1 })
-        .lean();
+        QuestionBankItem.countDocuments(filter),
+      ]);
 
       res.status(200).json({
         success: true,
         questions,
+        pagination: {
+          page,
+          limit,
+          totalQuestions,
+          totalPages: Math.ceil(totalQuestions / limit),
+        },
       });
     } catch (error) {
       console.error("Admin question-bank fetch error:", error);
@@ -287,7 +313,6 @@ if (search) {
     }
   }
 );
-
 router.get(
   "/questions/stats",
   requireAdmin,
@@ -415,6 +440,8 @@ router.post(
   }
 );
 
+
+// Update a manually created question
 router.patch(
   "/questions/:id",
   requireAdmin,
@@ -442,52 +469,91 @@ router.patch(
         });
         return;
       }
-const existingQuestion = await QuestionBankItem.findById(id);
 
-if (!existingQuestion) {
-  res.status(404).json({
-    success: false,
-    message: "Question not found.",
-  });
-  return;
-}
+      const existingQuestion =
+        await QuestionBankItem.findById(id);
 
-if (existingQuestion.sourceDatasetId) {
-  res.status(403).json({
-    success: false,
-    message:
-      "Uploaded dataset questions cannot be edited manually. Update the source dataset instead.",
-  });
-  return;
-}
-
-const updated = await QuestionBankItem.findByIdAndUpdate(
-  id,
-  parsed.data,
-  {
-    new: true,
-    runValidators: true,
-  }
-);
-
-if (!updated) {
-  res.status(404).json({
-    success: false,
-    message: "Question not found.",
-  });
-  return;
-}
-
-      
-const deleted = await QuestionBankItem.findByIdAndDelete(id);
-
-      if (!deleted) {
+      if (!existingQuestion) {
         res.status(404).json({
           success: false,
           message: "Question not found.",
         });
         return;
       }
+
+      if (existingQuestion.sourceDatasetId) {
+        res.status(403).json({
+          success: false,
+          message:
+            "Uploaded dataset questions cannot be edited manually. Update the source dataset instead.",
+        });
+        return;
+      }
+
+      const updated = await QuestionBankItem.findByIdAndUpdate(
+        id,
+        parsed.data,
+        {
+          new: true,
+          runValidators: true,
+        }
+      );
+
+      res.status(200).json({
+        success: true,
+        message: "Question updated successfully.",
+        question: updated,
+      });
+    } catch (error) {
+      console.error("Admin question update error:", error);
+
+      res.status(500).json({
+        success: false,
+        message: "Unable to update the question.",
+      });
+    }
+  }
+);
+
+// Delete a manually created question
+router.delete(
+  "/questions/:id",
+  requireAdmin,
+  async (req: Request, res: Response) => {
+    try {
+      const id = Array.isArray(req.params.id)
+        ? req.params.id[0]
+        : req.params.id;
+
+      if (!id || !/^[a-f\d]{24}$/i.test(id)) {
+        res.status(400).json({
+          success: false,
+          message: "Invalid question ID.",
+        });
+        return;
+      }
+
+      const existingQuestion =
+        await QuestionBankItem.findById(id);
+
+      if (!existingQuestion) {
+        res.status(404).json({
+          success: false,
+          message: "Question not found.",
+        });
+        return;
+      }
+
+      if (existingQuestion.sourceDatasetId) {
+        res.status(403).json({
+          success: false,
+          message:
+            "Uploaded dataset questions cannot be deleted manually. Update the source dataset instead.",
+        });
+        return;
+      }
+
+      await QuestionBankItem.findByIdAndDelete(id);
 
       res.status(200).json({
         success: true,
@@ -504,6 +570,7 @@ const deleted = await QuestionBankItem.findByIdAndDelete(id);
     }
   }
 );
+
 
 // =========================================================
 // ADMIN CANDIDATE MANAGEMENT
