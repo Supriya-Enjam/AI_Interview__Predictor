@@ -62,7 +62,13 @@ export interface QuestionEvaluation {
   missingKeywords: string[];
   keywordCoverage: number;
 }
-
+export interface MLPrediction {
+  predictedScore: number;
+  predictionType: string;
+  notice: string;
+  predictedAt: Date;
+  featureSource: "rubric";
+}
 export interface InterviewEvaluation {
   overallScore: number;
   maxScore: number;
@@ -73,6 +79,7 @@ export interface InterviewEvaluation {
   questionEvaluations: QuestionEvaluation[];
   evaluatedAt: Date;
   evaluationMethod: "rubric";
+  mlPrediction?: MLPrediction;
 }
 
 export interface IInterview extends Document {
@@ -231,6 +238,35 @@ const QuestionEvaluationSchema = new Schema<QuestionEvaluation>(
   { _id: false }
 );
 
+const MLPredictionSchema = new Schema<MLPrediction>(
+  {
+    predictedScore: {
+      type: Number,
+      required: true,
+      min: 0,
+      max: 100,
+    },
+    predictionType: {
+      type: String,
+      required: true,
+    },
+    notice: {
+      type: String,
+      required: true,
+    },
+    predictedAt: {
+      type: Date,
+      required: true,
+    },
+    featureSource: {
+      type: String,
+      enum: ["rubric"],
+      required: true,
+    },
+  },
+  { _id: false }
+);
+
 const InterviewEvaluationSchema = new Schema<InterviewEvaluation>(
   {
     overallScore: {
@@ -275,6 +311,10 @@ const InterviewEvaluationSchema = new Schema<InterviewEvaluation>(
       enum: ["rubric"],
       required: true,
     },
+    mlPrediction: {
+  type: MLPredictionSchema,
+  default: undefined,
+},
   },
   { _id: false }
 );

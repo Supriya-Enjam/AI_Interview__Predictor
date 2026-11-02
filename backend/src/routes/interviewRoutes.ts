@@ -3,6 +3,8 @@ import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
 
+import { predictInterviewPerformance } from "../services/mlPredictionService";
+
 import { Interview } from "../models/Interview";
 import { User } from "../models/User";
 
@@ -143,8 +145,59 @@ async function tryEvaluateInterview(
   interview: InstanceType<typeof Interview>
 ) {
   try {
+    // Step 1: Perform the existing rubric evaluation.
     const evaluation = evaluateCompletedInterview(interview);
 
+    // Step 2: Prepare ML features from the actual rubric scores.
+    const questionEvaluations = evaluation.questionEvaluations;
+    const questionCount = questionEvaluations.length;
+
+    if (questionCount > 0) {
+      const averageRubricScore = (
+        dimension: keyof (typeof questionEvaluations)[number]["rubric"],
+        maximum: number
+      ): number => {
+        const total = questionEvaluations.reduce(
+          (sum, question) => sum + question.rubric[dimension],
+          0
+        );
+
+        return Math.round(
+          (total / questionCount / maximum) * 100
+        );
+      };
+
+      const features = {
+        completeness_score: averageRubricScore("completeness", 4),
+        structure_score: averageRubricScore("structure", 3),
+        specificity_score: averageRubricScore("specificity", 3),
+        relevance_score: averageRubricScore("relevance", 5),
+        communication_score: averageRubricScore("communication", 5),
+      };
+
+      // Step 3: Request an experimental ML prediction.
+      try {
+        const prediction =
+          await predictInterviewPerformance(features);
+
+        if (prediction.success) {
+          evaluation.mlPrediction = {
+            predictedScore: prediction.predicted_score,
+            predictionType: prediction.prediction_type,
+            notice: prediction.notice,
+            predictedAt: new Date(),
+            featureSource: "rubric",
+          };
+        }
+      } catch (mlError) {
+        console.error(
+          "ML prediction unavailable. Continuing with rubric evaluation:",
+          mlError
+        );
+      }
+    }
+
+    // Step 4: Save the evaluation, even if ML prediction failed.
     interview.evaluation = evaluation;
     await interview.save();
 
