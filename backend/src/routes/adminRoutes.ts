@@ -1605,4 +1605,52 @@ router.get(
   }
 );
 
+// =========================================================
+// ADMIN ML MODEL INFORMATION
+// =========================================================
+
+router.get(
+  "/model/info",
+  requireAdmin,
+  async (_req: Request, res: Response) => {
+    try {
+      const mlServiceUrl =
+        process.env.ML_SERVICE_URL ||
+        "http://127.0.0.1:8000";
+
+      const response = await fetch(
+        `${mlServiceUrl}/model-info`,
+        {
+          method: "GET",
+          headers: {
+            Accept: "application/json",
+          },
+          signal: AbortSignal.timeout(10000),
+        }
+      );
+
+      const data: unknown = await response.json();
+
+      if (!response.ok) {
+        res.status(response.status).json({
+          success: false,
+          message: "Unable to retrieve ML model information.",
+          details: data,
+        });
+        return;
+      }
+
+      res.status(200).json(data);
+    } catch (error) {
+      console.error("Admin ML model information error:", error);
+
+      res.status(503).json({
+        success: false,
+        message:
+          "ML service is currently unavailable. Please ensure the Python ML service is running.",
+      });
+    }
+  }
+);
+
 export default router;

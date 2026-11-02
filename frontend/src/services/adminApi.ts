@@ -85,6 +85,31 @@ export interface ModelMonitoringData {
   metricsNote: string;
 }
 
+// =========================================================
+// ML MODEL INFORMATION TYPES
+// =========================================================
+
+export interface MLModelMetrics {
+  model_name: string;
+  model_type: string;
+  features: string[];
+  training_samples: number;
+  test_samples: number;
+  total_samples: number;
+  mae: number;
+  rmse: number;
+  r2_score: number;
+  training_data: string;
+  trained_at: string;
+  notice: string;
+}
+
+export interface MLModelInfoResponse {
+  success: boolean;
+  model_loaded: boolean;
+  metrics: MLModelMetrics;
+}
+
   
 // =========================================================
 // DATASET QUALITY REPORT TYPE
@@ -452,6 +477,27 @@ export async function getModelMonitoring(
   }
 
   return data.monitoring as ModelMonitoringData;
+}
+
+// Get trained ML model information and evaluation metrics
+export async function getMLModelInfo(
+  token: string
+): Promise<MLModelInfoResponse> {
+  const data = await requestAdminApi(
+    "/model/info",
+    token,
+    { method: "GET" }
+  );
+
+  if (
+    typeof data.model_loaded !== "boolean" ||
+    !data.metrics ||
+    typeof data.metrics !== "object"
+  ) {
+    throw new Error("Invalid ML model information response.");
+  }
+
+  return data as MLModelInfoResponse;
 }
 
 export async function getDatasetQualityReport(
