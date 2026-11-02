@@ -80,14 +80,39 @@ export default function ProfilePage({ token }: ProfilePageProps) {
 
     try {
       const result = await updateMyProfile(token, {
-        name: name.trim(),
-        targetRole: targetRole.trim(),
-      });
+  name: name.trim(),
+  targetRole: targetRole.trim(),
+});
 
-      setUser(result.user);
-      setName(result.user.name);
-      setTargetRole(result.user.targetRole ?? "");
-      setSuccess("Your profile has been updated successfully.");
+// Update React state
+setUser(result.user);
+setName(result.user.name);
+setTargetRole(result.user.targetRole ?? "");
+
+// Update the saved session
+const savedSession = sessionStorage.getItem("interviewiq_session");
+
+if (savedSession) {
+  const parsedSession = JSON.parse(savedSession);
+
+  const updatedSession = {
+    ...parsedSession,
+    user: {
+      ...parsedSession.user,
+      ...result.user,
+    },
+  };
+
+  sessionStorage.setItem(
+    "interviewiq_session",
+    JSON.stringify(updatedSession)
+  );
+}
+
+// Notify other parts of the application
+window.dispatchEvent(new Event("profileUpdated"));
+
+setSuccess("Your profile has been updated successfully.");
     } catch (err: unknown) {
       setError(
         err instanceof Error

@@ -39,35 +39,7 @@ import {
   type LearningTaskInput,
 } from "../services/learningProgressApi";
 
-const learningModules = [
-  {
-    title: "Technical Fundamentals",
-    description:
-      "Strengthen programming concepts, data structures, algorithms, and problem-solving.",
-    icon: Code2,
-    duration: "7 days",
-    category: "technical",
-    topics: [
-      "Programming fundamentals",
-      "Data structures and algorithms",
-      "Time and space complexity",
-      "Practice technical questions",
-    ],
-  },
-  {
-    title: "Communication Skills",
-    description:
-      "Improve answer clarity, structure, confidence, and professional communication.",
-    icon: MessageSquare,
-    duration: "5 days",
-    category: "communication",
-    topics: [
-      "Structure answers clearly",
-      "Explain technical concepts",
-      "Practice concise responses",
-      "Improve answer delivery",
-    ],
-  },
+const baseLearningModules = [
   {
     title: "Behavioral Interview Preparation",
     description:
@@ -87,10 +59,185 @@ const learningModules = [
 export default function LearningPlanPage() {
   const navigate = useNavigate();
 
+  const [targetRole, setTargetRole] = useState(() => {
+  try {
+    const savedSession = sessionStorage.getItem("interviewiq_session");
+
+    if (savedSession) {
+      const session = JSON.parse(savedSession);
+      return (
+        session.user?.targetRole?.trim() ||
+        "General Interview Preparation"
+      );
+    }
+  } catch {
+    // Use the default role if session data is unavailable.
+  }
+
+  return "General Interview Preparation";
+});
+
   const [readiness, setReadiness] =
     useState<InterviewReadinessSummary | null>(null);
 
   const [skillGaps, setSkillGaps] = useState<SkillGapSummary[]>([]);
+
+    // =====================================================
+  // LOAD CANDIDATE TARGET ROLE
+  // =====================================================
+// =====================================================
+// SYNC TARGET ROLE WHEN PROFILE CHANGES
+// =====================================================
+
+useEffect(() => {
+  function syncTargetRole() {
+    try {
+      const savedSession = sessionStorage.getItem("interviewiq_session");
+
+      if (!savedSession) return;
+
+      const session = JSON.parse(savedSession);
+
+      setTargetRole(
+        session.user?.targetRole?.trim() ||
+          "General Interview Preparation"
+      );
+    } catch {
+      setTargetRole("General Interview Preparation");
+    }
+  }
+
+  window.addEventListener("profileUpdated", syncTargetRole);
+
+  return () => {
+    window.removeEventListener("profileUpdated", syncTargetRole);
+  };
+}, []);
+
+  
+    // =====================================================
+  // DYNAMIC ROLE-BASED LEARNING MODULES
+  // =====================================================
+
+  function getModuleForSkill(skill: string) {
+    const value = skill.toLowerCase();
+
+    if (
+      /communication|clarity|relevance|confidence|speaking|language|listening|presentation/.test(
+        value
+      )
+    ) {
+      return "communication";
+    }
+
+    if (
+      /behavior|hr|leadership|teamwork|situational|conflict|adaptability/.test(
+        value
+      )
+    ) {
+      return "behavioral";
+    }
+
+    if (
+      /problem.solving|analytical|critical.thinking|logic|reasoning|debugging|troubleshooting/.test(
+        value
+      )
+    ) {
+      return "problem-solving";
+    }
+
+    if (
+      /domain|business|industry|finance|healthcare|banking|marketing|sales|product|customer|regulatory/.test(
+        value
+      )
+    ) {
+      return "domain-knowledge";
+    }
+
+    return "technical";
+  }
+
+  const roleCategories = [
+    {
+      title: `${targetRole} Technical Preparation`,
+      description: `Build the technical knowledge and practical skills expected in a ${targetRole} interview.`,
+      icon: Code2,
+      duration: "7 days",
+      category: "technical",
+      fallback: [
+        `Study core technical concepts for ${targetRole}`,
+        `Practice role-specific technical questions`,
+        `Review practical technical scenarios`,
+      ],
+    },
+    {
+      title: "Communication Skills",
+      description:
+        "Improve clarity, confidence, listening, and the way you explain your ideas.",
+      icon: MessageSquare,
+      duration: "5 days",
+      category: "communication",
+      fallback: [
+        "Structure answers clearly",
+        "Explain complex ideas simply",
+        "Practice concise responses",
+      ],
+    },
+    {
+      title: "Problem-Solving Skills",
+      description:
+        "Strengthen analytical thinking and your approach to solving interview problems.",
+      icon: Brain,
+      duration: "5 days",
+      category: "problem-solving",
+      fallback: [
+        "Break complex problems into smaller steps",
+        "Explain your problem-solving approach",
+        "Practice logical and analytical questions",
+      ],
+    },
+    {
+      title: "Domain Knowledge",
+      description:
+        `Understand the industry, business concepts, and responsibilities relevant to ${targetRole}.`,
+      icon: BookOpen,
+      duration: "4 days",
+      category: "domain-knowledge",
+      fallback: [
+        `Study the industry related to ${targetRole}`,
+        "Understand common business scenarios",
+        "Review important domain concepts",
+      ],
+    },
+  ];
+
+  const learningModules = [
+    ...roleCategories.map((category) => {
+      const matchingGaps = skillGaps.filter(
+        (gap) => getModuleForSkill(gap.skill) === category.category
+      );
+
+      const topics = [
+        ...new Set(
+          matchingGaps.flatMap((gap) => [
+            gap.skill,
+            ...gap.recommendedPractice,
+          ])
+        ),
+      ].slice(0, 12);
+
+      return {
+        ...category,
+        topics: topics.length > 0 ? topics : category.fallback,
+      };
+    }),
+    ...baseLearningModules,
+  ];
+
+    // =====================================================
+  // LEARNING PLAN LOADING AND PROGRESS STATE
+  // =====================================================
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -562,7 +709,7 @@ export default function LearningPlanPage() {
     return () => {
       active = false;
     };
-  }, []);
+ }, [targetRole]);
 
   // =====================================================
   // LOAD TASKS WHEN PAGE OPENS
@@ -580,6 +727,12 @@ export default function LearningPlanPage() {
     (total, module) => total + module.topics.length,
     0
   );
+
+  const totalDurationDays = learningModules.reduce(
+  (total, module) =>
+    total + (Number.parseInt(module.duration, 10) || 0),
+  0
+);
 
   const completedCount = completedTopics.filter((topicId) =>
     learningModules.some((module) =>
@@ -606,32 +759,15 @@ export default function LearningPlanPage() {
     const priority: Record<SkillGapSummary["readiness"], number> = {
       "Needs work": 0,
       Developing: 1,
-      Solid: 2,
-      Strong: 3,
+      "Not assessed": 2,
+      Solid: 3,
+      Strong: 4,
     };
 
     return priority[a.readiness] - priority[b.readiness];
   });
 
-  function getModuleForSkill(skill: string) {
-    const value = skill.toLowerCase();
-
-    if (
-      /communication|clarity|relevance|confidence|speaking|language/.test(
-        value
-      )
-    ) {
-      return "communication";
-    }
-
-    if (
-      /behavior|hr|leadership|teamwork|situational|conflict/.test(value)
-    ) {
-      return "behavioral";
-    }
-
-    return "technical";
-  }
+  
 
   function getModuleRecommendation(category: string) {
     return (
@@ -659,14 +795,19 @@ export default function LearningPlanPage() {
             Your personal growth journey
           </p>
 
-          <h1 className="mt-3 text-3xl font-bold sm:text-4xl">
-            Your Interview Learning Plan
-          </h1>
+         <h1 className="mt-3 text-3xl font-bold sm:text-4xl">
+  Your Interview Learning Plan
+</h1>
 
-          <p className="mt-4 max-w-xl leading-7 text-indigo-100">
-            Build your interview skills through focused learning,
-            consistent practice, and measurable progress.
-          </p>
+<div className="mt-4 inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-sm font-semibold">
+  <Target size={16} />
+  Target Role: {targetRole}
+</div>
+
+<p className="mt-4 max-w-xl leading-7 text-indigo-100">
+  Build your interview skills through focused learning,
+  consistent practice, and measurable progress.
+</p>
 
           <button
             onClick={() => navigate("/interview/setup")}
@@ -697,12 +838,14 @@ export default function LearningPlanPage() {
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
-          <TrendingUp className="mb-3 text-emerald-500" size={23} />
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Recommended duration
-          </p>
-          <p className="mt-1 text-3xl font-bold">16 days</p>
-        </div>
+  <TrendingUp className="mb-3 text-emerald-500" size={23} />
+  <p className="text-sm text-slate-500 dark:text-slate-400">
+    Recommended duration
+  </p>
+  <p className="mt-1 text-3xl font-bold">
+    {totalDurationDays} days
+  </p>
+</div>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
           <CheckCircle2 className="mb-3 text-violet-500" size={23} />

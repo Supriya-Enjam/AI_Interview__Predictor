@@ -8,9 +8,13 @@ import { predictInterviewPerformance } from "../services/mlPredictionService";
 import { Interview } from "../models/Interview";
 import { User } from "../models/User";
 
+
+
 import { evaluateCompletedInterview } from "../services/interviewEvaluationService";
 import { estimateInterviewReadiness } from "../services/interviewReadinessService";
 import { summarizeSkillGaps } from "../services/skillGapService";
+
+import { generateRoleSkills } from "../services/roleSkillService";
 import { recommendAdaptiveDifficulty } from "../services/adaptiveDifficultyService";
 import {
   generateQuestionSet,
@@ -599,11 +603,35 @@ router.get(
 // GET /api/interviews/skill-gaps
 // =========================================================
 
+
+
 router.get(
   "/skill-gaps",
   authenticateRequest,
   async (req: AuthenticatedRequest, res: Response) => {
     try {
+      // 1. Get the candidate's current target role.
+      const user = await User.findById(req.userId).select("targetRole");
+
+      if (!user) {
+        res.status(404).json({
+          success: false,
+          message: "Candidate account not found.",
+        });
+        return;
+      }
+
+      const targetRole = user.targetRole?.trim();
+
+      if (!targetRole) {
+        res.status(400).json({
+          success: false,
+          message: "Please update your target role before generating a learning plan.",
+        });
+        return;
+      }
+
+      // 2. Retrieve completed interview assessments.
       const interviews = await Interview.find({
         candidateId: req.userId,
         status: "completed",
@@ -612,7 +640,8 @@ router.get(
         .sort({ completedAt: -1 })
         .lean();
 
-      const skillGaps = summarizeSkillGaps(
+      // 3. Calculate previously assessed skills.
+      const assessedSkills = summarizeSkillGaps(
         interviews as Array<{
           status: string;
           questions: Array<{
@@ -631,9 +660,85 @@ router.get(
         }>
       );
 
+      // 4. Generate role-specific skills using Gemini.
+      const roleSkills = await generateRoleSkills(targetRole);
+
+      // 5. Match role requirements with assessment evidence.
+      const normalize = (value: string) =>
+        value.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+      const roleSpecificSkillGaps = roleSkills.map((requiredSkill) => {
+        const assessedSkill = assessedSkills.find(
+          (item) =>
+            normalize(item.skill) === normalize(requiredSkill.skill)
+        );
+
+        if (assessedSkill) {
+          return {
+            ...assessedSkill,
+            skill: requiredSkill.skill,
+            category: requiredSkill.category,
+            importance: requiredSkill.importance,
+            description: requiredSkill.description,
+            recommendedPractice: [
+              ...new Set([
+                ...assessedSkill.recommendedPractice,
+                ...requiredSkill.learningTopics,
+              ]),
+            ].slice(0, 4),
+            assessed: true,
+          };
+        }
+
+        // No assessment evidence means Not assessed, not Needs work.
+        return {
+          skill: requiredSkill.skill,
+          category: requiredSkill.category,
+          importance: requiredSkill.importance,
+          description: requiredSkill.description,
+          assessments: 0,
+          averageScore: 0,
+          readiness: "Not assessed" as const,
+          strongAreas: [],
+          weakAreas: [],
+          recommendedPractice: requiredSkill.learningTopics,
+          assessed: false,
+        };
+      });
+
+      // 6. Sort by importance, then assessment score.
+      const importanceOrder: Record<string, number> = {
+        High: 0,
+        Medium: 1,
+        Low: 2,
+      };
+
+      roleSpecificSkillGaps.sort((a, b) => {
+        const importanceDifference =
+          importanceOrder[a.importance] -
+          importanceOrder[b.importance];
+
+        if (importanceDifference !== 0) {
+          return importanceDifference;
+        }
+
+        return a.averageScore - b.averageScore;
+      });
+
+      // 7. Return dynamic learning recommendations.
       res.status(200).json({
         success: true,
-        skillGaps,
+        targetRole,
+        skillGaps: roleSpecificSkillGaps,
+        roleSkills,
+        roleSkillsGenerated: true,
+        totalRequiredSkills: roleSkills.length,
+        assessedSkills: roleSpecificSkillGaps.filter(
+          (skill) => skill.assessed
+        ).length,
+        unassessedSkills: roleSpecificSkillGaps.filter(
+          (skill) => !skill.assessed
+        ).length,
       });
     } catch (error) {
       console.error("Get skill gap summary error:", error);
