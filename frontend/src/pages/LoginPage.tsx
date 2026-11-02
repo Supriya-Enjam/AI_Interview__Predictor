@@ -1,5 +1,5 @@
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
@@ -44,6 +44,7 @@ export default function LoginPage({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [resendSeconds, setResendSeconds] = useState(0);
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -106,6 +107,46 @@ export default function LoginPage({
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+  if (resendSeconds <= 0) return;
+
+  const timer = window.setTimeout(() => {
+    setResendSeconds((previous) => Math.max(0, previous - 1));
+  }, 1000);
+
+  return () => window.clearTimeout(timer);
+}, [resendSeconds]);
+
+async function handleResendOtp() {
+  if (loading || resendSeconds > 0) return;
+
+  setError("");
+  setMessage("");
+  setLoading(true);
+
+  try {
+    const result = await loginUser({
+      email: email.trim(),
+      password,
+    });
+
+    if (result.requiresOtp && result.challengeId) {
+      setChallengeId(result.challengeId);
+      setOtp("");
+      setResendSeconds(30);
+      setMessage("A new verification code has been sent to your email.");
+    }
+  } catch (err) {
+    setError(
+      err instanceof Error
+        ? err.message
+        : "Unable to resend the verification code."
+    );
+  } finally {
+    setLoading(false);
+  }
+}  
 
   async function handleGoogleSuccess(
     response: CredentialResponse
@@ -247,14 +288,27 @@ export default function LoginPage({
                   {!loading && <ArrowRight size={18} />}
                 </button>
 
-                <button
-                  type="button"
-                  onClick={returnToLogin}
-                  disabled={loading}
-                  className="w-full rounded-xl border border-slate-700 px-4 py-3 text-sm font-medium text-slate-300 transition hover:bg-slate-800 disabled:opacity-60"
-                >
-                  Back to login
-                </button>
+               <button
+  type="button"
+  onClick={handleResendOtp}
+  disabled={loading || resendSeconds > 0}
+  className="w-full rounded-xl border border-indigo-500/40 px-4 py-3 text-sm font-medium text-indigo-400 transition hover:bg-indigo-500/10 disabled:cursor-not-allowed disabled:opacity-50"
+>
+  {loading
+    ? "Sending..."
+    : resendSeconds > 0
+      ? `Resend code in ${resendSeconds}s`
+      : "Resend verification code"}
+</button>
+
+<button
+  type="button"
+  onClick={returnToLogin}
+  disabled={loading}
+  className="w-full rounded-xl border border-slate-700 px-4 py-3 text-sm font-medium text-slate-300 transition hover:bg-slate-800 disabled:opacity-60"
+>
+  Back to login
+</button>
               </form>
             </>
           ) : (

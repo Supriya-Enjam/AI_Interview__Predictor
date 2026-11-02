@@ -10,9 +10,48 @@ import { LoginOtp } from "../models/LoginOtp";
 import { PasswordResetToken } from "../models/PasswordResetToken";
 import { sendEmail } from "../config/email";
 import { OAuth2Client } from "google-auth-library";
-
+import { rateLimit } from "express-rate-limit";
 const router = Router();
 const googleClient = new OAuth2Client();
+
+// =====================================================
+// AUTHENTICATION RATE LIMITERS
+// =====================================================
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: "Too many login requests. Please try again after 15 minutes.",
+  },
+});
+
+const otpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message:
+      "Too many verification attempts. Please try again after 15 minutes.",
+  },
+});
+
+const forgotPasswordLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 3,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message:
+      "Too many password reset requests. Please try again after an hour.",
+  },
+});
 
 // =====================================================
 // VALIDATION SCHEMAS
@@ -161,6 +200,7 @@ router.post(
 
 router.post(
   "/login",
+  loginLimiter,
   async (req: Request, res: Response): Promise<void> => {
     try {
       const parsed = loginSchema.safeParse(req.body);
@@ -264,6 +304,7 @@ router.post(
 
 router.post(
   "/verify-otp",
+  otpLimiter,
   async (req: Request, res: Response): Promise<void> => {
     try {
       const parsed = verifyOtpSchema.safeParse(req.body);
@@ -387,6 +428,7 @@ router.post(
 
 router.post(
   "/forgot-password",
+  forgotPasswordLimiter,
   async (req: Request, res: Response): Promise<void> => {
     try {
       const parsed = forgotPasswordSchema.safeParse(req.body);
