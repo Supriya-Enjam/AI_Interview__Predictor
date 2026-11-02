@@ -12,6 +12,7 @@ import { Interview } from "../models/Interview";
 import { QuestionBankItem } from "../models/QuestionBank";
 import { User } from "../models/User";
 import { Dataset } from "../models/Dataset";
+import { syncUploadedDatasetsToQuestionBank } from "../services/questionBankService";
 
 const router = Router();
 
@@ -172,6 +173,7 @@ const adminQuestionQuerySchema = z.object({
     "all",
   ]).optional(),
   search: z.string().trim().max(120).optional(),
+  source: z.enum(["all", "uploaded", "manual"]).optional(),
 });
 
 // =========================================================
@@ -184,10 +186,18 @@ router.get(
   async (req: Request, res: Response) => {
     try {
       const parsed = adminQuestionQuerySchema.safeParse(req.query);
+      if (!parsed.success) {
+  res.status(400).json({
+    success: false,
+    message: "Invalid question-bank filters.",
+    errors: parsed.error.flatten(),
+  });
+  return;
+}
       const filter: Record<string, unknown> = {};
 
       if (parsed.success) {
-        const { category, difficulty, search } = parsed.data;
+        const { category, difficulty, search, source } = parsed.data;
 
         if (category && category !== "all") {
           filter.category = category;
@@ -197,41 +207,68 @@ router.get(
           filter.difficulty = difficulty;
         }
 
-        if (search) {
-          const escapedSearch = search.replace(
-            /[.*+?^${}()|[\]\\]/g,
-            "\\$&"
-          );
+        if (source === "uploaded") {
+  filter.sourceDatasetId = {
+    $exists: true,
+    $ne: "",
+  };
+} else if (source === "manual") {
+  filter.$or = [
+    { sourceDatasetId: { $exists: false } },
+    { sourceDatasetId: null },
+    { sourceDatasetId: "" },
+  ];
+}
 
-          filter.$or = [
-            {
-              questionText: {
-                $regex: escapedSearch,
-                $options: "i",
-              },
-            },
-            {
-              skills: {
-                $regex: escapedSearch,
-                $options: "i",
-              },
-            },
-            {
-              expectedConcepts: {
-                $regex: escapedSearch,
-                $options: "i",
-              },
-            },
-            {
-              roleContext: {
-                $regex: escapedSearch,
-                $options: "i",
-              },
-            },
-          ];
-        }
-      }
+if (search) {
+  const escapedSearch = search.replace(
+    /[.*+?^${}()|[\]\\]/g,
+    "\\$&"
+  );
 
+  const searchConditions = [
+    {
+      questionText: {
+        $regex: escapedSearch,
+        $options: "i",
+      },
+    },
+    {
+      skills: {
+        $regex: escapedSearch,
+        $options: "i",
+      },
+    },
+    {
+      expectedConcepts: {
+        $regex: escapedSearch,
+        $options: "i",
+      },
+    },
+    {
+      roleContext: {
+        $regex: escapedSearch,
+        $options: "i",
+      },
+    },
+  ];
+
+  if (filter.$or) {
+    filter.$and = [
+      {
+        $or: filter.$or as Record<string, unknown>[],
+      },
+      {
+        $or: searchConditions,
+      },
+    ];
+
+    delete filter.$or;
+  } else {
+    filter.$or = searchConditions;
+  }
+}
+}
       const questions = await QuestionBankItem.find(filter)
         .sort({ createdAt: -1 })
         .lean();
@@ -405,58 +442,44 @@ router.patch(
         });
         return;
       }
+const existingQuestion = await QuestionBankItem.findById(id);
 
-      const updated = await QuestionBankItem.findByIdAndUpdate(
-        id,
-        parsed.data,
-        {
-          new: true,
-          runValidators: true,
-        }
-      );
+if (!existingQuestion) {
+  res.status(404).json({
+    success: false,
+    message: "Question not found.",
+  });
+  return;
+}
 
-      if (!updated) {
-        res.status(404).json({
-          success: false,
-          message: "Question not found.",
-        });
-        return;
-      }
+if (existingQuestion.sourceDatasetId) {
+  res.status(403).json({
+    success: false,
+    message:
+      "Uploaded dataset questions cannot be edited manually. Update the source dataset instead.",
+  });
+  return;
+}
 
-      res.status(200).json({
-        success: true,
-        message: "Question updated.",
-        question: updated,
-      });
-    } catch (error) {
-      console.error("Admin question update error:", error);
-
-      res.status(500).json({
-        success: false,
-        message: "Unable to update the question.",
-      });
-    }
+const updated = await QuestionBankItem.findByIdAndUpdate(
+  id,
+  parsed.data,
+  {
+    new: true,
+    runValidators: true,
   }
 );
 
-router.delete(
-  "/questions/:id",
-  requireAdmin,
-  async (req: Request, res: Response) => {
-    try {
-      const id = Array.isArray(req.params.id)
-        ? req.params.id[0]
-        : req.params.id;
+if (!updated) {
+  res.status(404).json({
+    success: false,
+    message: "Question not found.",
+  });
+  return;
+}
 
-      if (!id || !/^[a-f\d]{24}$/i.test(id)) {
-        res.status(400).json({
-          success: false,
-          message: "Invalid question ID.",
-        });
-        return;
-      }
-
-      const deleted = await QuestionBankItem.findByIdAndDelete(id);
+      
+const deleted = await QuestionBankItem.findByIdAndDelete(id);
 
       if (!deleted) {
         res.status(404).json({
@@ -857,6 +880,48 @@ router.get(
 );
 
 // =========================================================
+// ADMIN DATASET QUALITY REPORT
+// =========================================================
+
+router.get(
+  "/model/dataset-quality",
+  requireAdmin,
+  async (_req: Request, res: Response) => {
+    try {
+      const reportPath = path.resolve(
+        __dirname,
+        "../../data/dataset_quality_report.json"
+      );
+
+      const reportContent = await fs.readFile(reportPath, "utf-8");
+      const report = JSON.parse(reportContent);
+
+      return res.json({
+        success: true,
+        data: report,
+      });
+    } catch (error) {
+      const fileError = error as NodeJS.ErrnoException;
+
+      if (fileError.code === "ENOENT") {
+        return res.status(404).json({
+          success: false,
+          message:
+            "Dataset quality report not found. Run the dataset report script first.",
+        });
+      }
+
+      console.error("Dataset quality report error:", error);
+
+      return res.status(500).json({
+        success: false,
+        message: "Failed to load dataset quality report.",
+      });
+    }
+  }
+);
+
+// =========================================================
 // ADMIN DATASET MANAGEMENT
 // =========================================================
 
@@ -1009,6 +1074,7 @@ router.post(
         status: "active",
         uploadedBy: decoded.sub,
       });
+      await syncUploadedDatasetsToQuestionBank();
 
       res.status(201).json({
         success: true,
@@ -1202,6 +1268,7 @@ router.patch(
         });
         return;
       }
+      await syncUploadedDatasetsToQuestionBank();
 
       res.status(200).json({
         success: true,
@@ -1278,6 +1345,7 @@ router.delete(
       });
 
       await Dataset.findByIdAndDelete(id);
+      await syncUploadedDatasetsToQuestionBank();
 
       res.status(200).json({
         success: true,

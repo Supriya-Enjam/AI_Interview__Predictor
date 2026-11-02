@@ -1,0 +1,68 @@
+{
+    "totalRecords": 3,
+    "minimumTrainingRecords": 30,
+    "meetsMinimumRecordCount": false,
+    "duplicateQuestionAnswerPairs": 0,
+    "missingValues": {
+        "question": 0,
+        "answer": 0,
+        "targetRole": 0,
+        "category": 0,
+        "difficulty": 0,
+        "completenessScore": 0,
+        "structureScore": 0,
+        "specificityScore": 0,
+        "relevanceScore": 0,
+        "communicationScore": 0,
+        "overallScore": 0
+    },
+    "roleDistribution": {
+        "Backend Developer": 1,
+        "Frontend Developer": 1,
+        "Software Developer": 1
+    },
+    "categoryDistribution": {
+        "technical": 2,
+        "behavioral": 1
+    },
+    "difficultyDistribution": {
+        "beginner": 2,
+        "intermediate": 1
+    },
+    "scoreStatistics": {
+        "completenessScore": {
+            "minimum": 3.0,
+            "maximum": 4.0,
+            "average": 3.67
+        },
+        "structureScore": {
+            "minimum": 3.0,
+            "maximum": 3.0,
+            "average": 3.0
+        },
+        "specificityScore": {
+            "minimum": 2.0,
+            "maximum": 3.0,
+            "average": 2.33
+        },
+        "relevanceScore": {
+            "minimum": 5.0,
+            "maximum": 5.0,
+            "average": 5.0
+        },
+        "communicationScore": {
+            "minimum": 4.0,
+            "maximum": 4.0,
+            "average": 4.0
+        },
+        "overallScore": {
+            "minimum": 17.0,
+            "maximum": 19.0,
+            "average": 18.0
+        }
+    },
+    "warnings": [
+        "Only 3 records available. At least 30 are required by the current training script."
+    ],
+    "trainingReady": false
+}

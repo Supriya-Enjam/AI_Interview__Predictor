@@ -23,6 +23,12 @@ export interface IQuestionBankItem {
   skills: string[];
   expectedConcepts: string[];
   roleContext?: string;
+
+  // Tracks questions imported from admin-uploaded datasets.
+  sourceDatasetId?: string;
+  sourceRowKey?: string;
+  sourceDatasetName?: string;
+
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -68,6 +74,19 @@ const questionBankItemSchema = new Schema<IQuestionBankItem>(
       type: String,
       trim: true,
       maxlength: 200,
+    },
+    sourceDatasetId: {
+      type: String,
+      trim: true,
+    },
+    sourceRowKey: {
+      type: String,
+      trim: true,
+    },
+    sourceDatasetName: {
+      type: String,
+      trim: true,
+      maxlength: 120,
     },
   },
   {

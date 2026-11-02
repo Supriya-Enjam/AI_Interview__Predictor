@@ -1,5 +1,9 @@
 
 import { QuestionBankItem } from "../models/QuestionBank";
+import fs from "node:fs/promises";
+import path from "node:path";
+import { parse } from "csv-parse/sync";
+import { Dataset } from "../models/Dataset";
 import type {
   QuestionBankCategory,
   QuestionBankDifficulty,
@@ -27,6 +31,201 @@ type DefaultQuestion = QuestionBankEntry;
 function randomPick<T>(items: T[]): T | undefined {
   if (items.length === 0) return undefined;
   return items[Math.floor(Math.random() * items.length)];
+}
+
+// =========================================================
+// IMPORT ACTIVE ADMIN DATASETS INTO QUESTION BANK
+// =========================================================
+
+type UploadedQuestionRow = Record<string, unknown>;
+
+function normalizeCategory(value: unknown): QuestionBankCategory | null {
+  const category = String(value ?? "").trim().toLowerCase();
+
+  const categoryMap: Record<string, QuestionBankCategory> = {
+    technical: "technical",
+    behavioral: "behavioral",
+    behaviour: "behavioral",
+    hr: "hr",
+    "human resources": "hr",
+    mixed: "mixed",
+    situational: "situational",
+    coding: "coding",
+  };
+
+  return categoryMap[category] ?? null;
+}
+
+function normalizeDifficulty(
+  value: unknown
+): QuestionBankDifficulty | null {
+  const difficulty = String(value ?? "").trim().toLowerCase();
+
+  if (
+    difficulty === "beginner" ||
+    difficulty === "intermediate" ||
+    difficulty === "advanced"
+  ) {
+    return difficulty;
+  }
+
+  return null;
+}
+
+function normalizeUploadedRow(
+  row: UploadedQuestionRow
+): QuestionBankEntry | null {
+  const questionText = String(
+    row.question ?? row.questionText ?? ""
+  ).trim();
+
+  const category = normalizeCategory(row.category);
+  const difficulty = normalizeDifficulty(row.difficulty);
+
+  if (
+    questionText.length < 10 ||
+    questionText.length > 2000 ||
+    !category ||
+    !difficulty
+  ) {
+    return null;
+  }
+
+  const targetRole = String(row.targetRole ?? "").trim();
+
+  return {
+    questionText,
+    category,
+    difficulty,
+    skills: [],
+    expectedConcepts: [],
+    ...(targetRole ? { roleContext: targetRole.slice(0, 200) } : {}),
+  };
+}
+
+async function readUploadedDataset(
+  filePath: string,
+  fileType: "csv" | "json"
+): Promise<UploadedQuestionRow[]> {
+  const absolutePath = path.resolve(filePath);
+  const content = await fs.readFile(absolutePath, "utf-8");
+
+  if (fileType === "csv") {
+    return parse(content, {
+      columns: true,
+      skip_empty_lines: true,
+      trim: true,
+      bom: true,
+    }) as UploadedQuestionRow[];
+  }
+
+  const parsed: unknown = JSON.parse(content);
+
+  if (!Array.isArray(parsed)) {
+    throw new Error("JSON dataset must contain an array of objects.");
+  }
+
+  return parsed.filter(
+    (item): item is UploadedQuestionRow =>
+      typeof item === "object" &&
+      item !== null &&
+      !Array.isArray(item)
+  );
+}
+
+export async function syncUploadedDatasetsToQuestionBank(): Promise<void> {
+  const datasets = await Dataset.find({})
+    .select("_id name filePath fileType status")
+    .lean();
+
+  const activeDatasetIds = new Set(
+    datasets
+      .filter((dataset) => dataset.status === "active")
+      .map((dataset) => String(dataset._id))
+  );
+
+  // Remove imported questions from inactive or deleted datasets.
+  await QuestionBankItem.deleteMany({
+    sourceDatasetId: {
+      $nin: Array.from(activeDatasetIds),
+    },
+  });
+
+  for (const dataset of datasets) {
+    if (dataset.status !== "active") {
+      continue;
+    }
+
+    const datasetId = String(dataset._id);
+
+    try {
+      const rows = await readUploadedDataset(
+        dataset.filePath,
+        dataset.fileType
+      );
+
+      const validEntries = rows
+        .map(normalizeUploadedRow)
+        .filter(
+          (entry): entry is QuestionBankEntry => entry !== null
+        );
+
+      const uniqueEntries = new Map<string, QuestionBankEntry>();
+
+      for (const entry of validEntries) {
+        const key = entry.questionText.toLowerCase().replace(/\s+/g, " ");
+
+        if (!uniqueEntries.has(key)) {
+          uniqueEntries.set(key, entry);
+        }
+      }
+
+      const validKeys = Array.from(uniqueEntries.keys());
+
+      for (const [sourceRowKey, entry] of uniqueEntries) {
+        await QuestionBankItem.updateOne(
+          {
+            sourceDatasetId: datasetId,
+            sourceRowKey,
+          },
+          {
+            $set: {
+              ...entry,
+              sourceDatasetId: datasetId,
+              sourceRowKey,
+              sourceDatasetName: dataset.name,
+            },
+          },
+          { upsert: true }
+        );
+      }
+
+      // Remove old imported rows that no longer exist in this file.
+      await QuestionBankItem.deleteMany({
+        sourceDatasetId: datasetId,
+        ...(validKeys.length > 0
+          ? { sourceRowKey: { $nin: validKeys } }
+          : {}),
+      });
+
+      if (validKeys.length === 0) {
+        await QuestionBankItem.deleteMany({
+          sourceDatasetId: datasetId,
+        });
+      }
+
+      console.log(
+        `Dataset "${dataset.name}": ${validKeys.length} questions synchronized.`
+      );
+    } catch (error) {
+      // Preserve previously imported questions if an active file
+      // cannot be read or parsed.
+      console.error(
+        `Unable to synchronize dataset "${dataset.name}":`,
+        error
+      );
+    }
+  }
 }
 
 // =========================================================
@@ -249,6 +448,7 @@ export async function generateQuestionSet(
   targetRole: string,
   limit = 5
 ): Promise<QuestionBankEntry[]> {
+    await syncUploadedDatasetsToQuestionBank();
   const typedDifficulty = difficulty as QuestionBankDifficulty;
   const requestedCategory = category as QuestionBankCategory;
 

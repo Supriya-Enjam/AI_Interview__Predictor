@@ -1,0 +1,4 @@
+﻿question,answer,targetRole,category,difficulty,completenessScore,structureScore,specificityScore,relevanceScore,communicationScore,overallScore
+"What is a REST API?","A REST API allows applications to communicate over HTTP using methods such as GET and POST.","Backend Developer",technical,beginner,4,3,2,5,4,18
+"What is the difference between let and const?","Both are block scoped. let allows reassignment, while const does not allow reassignment.","Frontend Developer",technical,beginner,3,3,2,5,4,17
+"Tell me about a challenging project.","I developed a task management application using React and Node.js. I resolved API integration issues through debugging.","Software Developer",behavioral,intermediate,4,3,3,5,4,19

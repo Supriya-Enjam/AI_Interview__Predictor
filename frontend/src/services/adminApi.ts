@@ -67,6 +67,36 @@ export interface ModelMonitoringData {
   metricsNote: string;
 }
 
+  
+// =========================================================
+// DATASET QUALITY REPORT TYPE
+// =========================================================
+
+export interface DatasetQualityReport {
+  totalRecords: number;
+  minimumTrainingRecords: number;
+  meetsMinimumRecordCount: boolean;
+  duplicateQuestionAnswerPairs: number;
+  missingValues: Record<string, number>;
+  roleDistribution: Record<string, number>;
+  categoryDistribution: Record<string, number>;
+  difficultyDistribution: Record<string, number>;
+  scoreStatistics: Record<
+    string,
+    {
+      minimum: number | null;
+      maximum: number | null;
+      average: number | null;
+    }
+  >;
+  warnings: string[];
+  trainingReady: boolean;
+}
+
+// =========================================================
+// CANDIDATE MANAGEMENT TYPES
+// =========================================================
+
 // =========================================================
 // CANDIDATE MANAGEMENT TYPES
 // =========================================================
@@ -388,6 +418,22 @@ export async function getModelMonitoring(
   }
 
   return data.monitoring as ModelMonitoringData;
+}
+
+export async function getDatasetQualityReport(
+  token: string
+): Promise<DatasetQualityReport> {
+  const data = await requestAdminApi(
+    "/model/dataset-quality",
+    token,
+    { method: "GET" }
+  );
+
+  if (!data.data || typeof data.data !== "object") {
+    throw new Error("Invalid dataset quality report response.");
+  }
+
+  return data.data as DatasetQualityReport;
 }
 
 // =========================================================
