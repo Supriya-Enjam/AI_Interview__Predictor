@@ -11,7 +11,16 @@ import {
   ShieldCheck,
   Target,
   TrendingUp,
+  Mail,
 } from "lucide-react";
+
+import {
+  FaInstagram,
+  FaLinkedinIn,
+  FaGithub,
+  FaYoutube,
+  FaFacebookF,
+} from "react-icons/fa";
 
 const features = [
   {
@@ -365,15 +374,187 @@ export default function LandingPage() {
         </section>
       </main>
 
+      
       {/* Footer */}
       <footer className="border-t border-[#E9DDF7] bg-white">
-        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-5 py-8 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between lg:px-8">
-          <p className="font-semibold text-slate-800">
-            InterviewIQ · AI Interview Performance Predictor
-          </p>
-          <p>Practice with purpose. Prepare with confidence.</p>
+        <div className="mx-auto max-w-7xl px-5 py-12 lg:px-8">
+
+          {/* Footer Main Content */}
+          <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4">
+
+            {/* Brand Information */}
+            <div>
+              <Link to="/" className="flex items-center gap-2.5">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-600 text-white">
+                  <BrainCircuit size={25} />
+                </div>
+                <div>
+                  <span className="block text-xl font-extrabold text-[#1F1633]">
+                    InterviewIQ
+                  </span>
+                  <span className="block text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-600">
+                    AI Preparation
+                  </span>
+                </div>
+              </Link>
+
+              <p className="mt-5 max-w-xs text-sm leading-7 text-slate-600">
+                Your AI-powered interview preparation partner. Practice
+                smarter, improve your skills, and prepare with confidence.
+              </p>
+            </div>
+
+            {/* Quick Links */}
+            <div>
+              <h3 className="text-lg font-bold text-[#4C1D95]">
+                Quick Links
+              </h3>
+
+              <ul className="mt-5 space-y-3 text-sm text-slate-600">
+                <li>
+                  <Link to="/" className="transition hover:text-indigo-700">
+                    Home
+                  </Link>
+                </li>
+                <li>
+                  <a href="#features" className="transition hover:text-indigo-700">
+                    Features
+                  </a>
+                </li>
+                <li>
+                  <a href="#how-it-works" className="transition hover:text-indigo-700">
+                    How It Works
+                  </a>
+                </li>
+                <li>
+                  <a href="#benefits" className="transition hover:text-indigo-700">
+                    Benefits
+                  </a>
+                </li>
+                <li>
+                  <Link to="/login" className="transition hover:text-indigo-700">
+                    Login
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            {/* Legal Information */}
+            <div>
+              <h3 className="text-lg font-bold text-[#4C1D95]">
+                Legal
+              </h3>
+
+              <ul className="mt-5 space-y-3 text-sm text-slate-600">
+                <li>
+                  <Link
+                    to="/privacy-policy"
+                    className="transition hover:text-indigo-700"
+                  >
+                    Privacy Policy
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/terms-and-conditions"
+                    className="transition hover:text-indigo-700"
+                  >
+                    Terms & Conditions
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+{/* Social Media */}
+<div>
+  <h3 className="text-lg font-bold text-[#4C1D95]">
+    Follow Us
+  </h3>
+
+  <p className="mt-5 text-sm leading-6 text-slate-600">
+    Connect with InterviewIQ on social media.
+  </p>
+
+  <div className="mt-5 flex flex-wrap gap-3">
+    <a
+      href="https://www.instagram.com/"
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="Instagram"
+      className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#E9DDF7] bg-[#FAF9FF] text-pink-600 transition hover:-translate-y-1 hover:bg-pink-600 hover:text-white"
+    >
+      <FaInstagram size={21} />
+    </a>
+
+    <a
+      href="https://www.linkedin.com/"
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="LinkedIn"
+      className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#E9DDF7] bg-[#FAF9FF] text-blue-700 transition hover:-translate-y-1 hover:bg-blue-700 hover:text-white"
+    >
+      <FaLinkedinIn size={20} />
+    </a>
+
+    <a
+      href="https://github.com/"
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="GitHub"
+      className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#E9DDF7] bg-[#FAF9FF] text-slate-800 transition hover:-translate-y-1 hover:bg-slate-900 hover:text-white"
+    >
+      <FaGithub size={21} />
+    </a>
+
+    <a
+      href="https://www.youtube.com/"
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="YouTube"
+      className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#E9DDF7] bg-[#FAF9FF] text-red-600 transition hover:-translate-y-1 hover:bg-red-600 hover:text-white"
+    >
+      <FaYoutube size={22} />
+    </a>
+
+    <a
+      href="https://www.facebook.com/"
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="Facebook"
+      className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#E9DDF7] bg-[#FAF9FF] text-blue-600 transition hover:-translate-y-1 hover:bg-blue-600 hover:text-white"
+    >
+      <FaFacebookF size={19} />
+    </a>
+  </div>
+
+  <a
+    href="mailto:support@interviewiq.com"
+    className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-slate-600 transition hover:text-indigo-700"
+  >
+    <Mail size={17} />
+    Contact Support
+  </a>
+</div>
+          
+</div>
+
+          {/* Footer Bottom */}
+          <div className="mt-12 border-t border-[#E9DDF7] pt-6">
+            <div className="flex flex-col items-center justify-between gap-4 text-center sm:flex-row sm:text-left">
+
+              <p className="text-sm text-slate-600">
+                © {new Date().getFullYear()} InterviewIQ. All rights reserved.
+              </p>
+
+              <p className="text-sm font-medium text-[#4C1D95]">
+                Practice with purpose. Prepare with confidence.
+              </p>
+
+            </div>
+          </div>
         </div>
       </footer>
+
     </div>
   );
 }

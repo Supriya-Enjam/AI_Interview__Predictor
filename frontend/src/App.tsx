@@ -31,6 +31,9 @@ import ResumeInterviewPage from "./pages/ResumeInterviewPage";
 import DashboardLayout from "./components/DashboardLayout";
 import LearningPlanPage from "./pages/LearningPlanPage";
 
+import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
+import TermsAndConditionsPage from "./pages/TermsAndConditionsPage";
+
 import {
   refreshSession,
   logoutUser,
@@ -314,6 +317,16 @@ useEffect(() => {
         path="/reset-password"
         element={<ResetPasswordPage />}
       />
+
+      <Route
+  path="/privacy-policy"
+  element={<PrivacyPolicyPage />}
+/>
+
+<Route
+  path="/terms-and-conditions"
+  element={<TermsAndConditionsPage />}
+/>
 
       {/* Protected application with shared sidebar */}
       <Route
