@@ -154,6 +154,64 @@ export async function loginWithGoogle(
   return result as AuthResponse;
 }
 
+export interface SessionResponse {
+  success: boolean;
+  message: string;
+  expiresAt?: string;
+}
+
+// Extend the current authenticated session.
+export async function refreshSession(
+  token: string
+): Promise<SessionResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}/session/refresh`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  const result = await response.json();
+
+  if (!response.ok || !result.success) {
+    throw new Error(
+      result.message || "Unable to extend your session."
+    );
+  }
+
+  return result as SessionResponse;
+}
+
+// Revoke the current authenticated session.
+export async function logoutUser(
+  token: string
+): Promise<{ success: boolean; message: string }> {
+  const response = await fetch(
+    `${API_BASE_URL}/logout`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  const result = await response.json();
+
+  if (!response.ok || !result.success) {
+    throw new Error(
+      result.message || "Unable to log out from the server."
+    );
+  }
+
+  return result;
+}
+
 export interface ProfileResponse {
   success: boolean;
   message: string;

@@ -2,10 +2,17 @@
 import { Router, type Request, type Response } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { createHash, randomBytes, randomInt } from "node:crypto";
+import {
+  createHash,
+  randomBytes,
+  randomInt,
+  randomUUID,
+} from "node:crypto";
 import { z } from "zod";
 
 import { User } from "../models/User";
+import { Session } from "../models/Session";
+import { authenticate } from "../middleware/authenticate";
 import { LoginOtp } from "../models/LoginOtp";
 import { PasswordResetToken } from "../models/PasswordResetToken";
 import { sendEmail } from "../config/email";
@@ -87,16 +94,44 @@ const resetPasswordSchema = z.object({
 // HELPERS
 // =====================================================
 
-function createToken(userId: string): string {
+// Create a database session and issue a JWT containing its session ID.
+async function createAuthenticatedSession(
+  userId: string
+): Promise<string> {
   const secret = process.env.JWT_SECRET;
 
   if (!secret || secret.length < 32) {
     throw new Error("JWT_SECRET must contain at least 32 characters");
   }
 
-  return jwt.sign({ sub: userId }, secret, {
-    expiresIn: "1h",
+  const sessionId = randomUUID();
+  const now = new Date();
+
+  // 15 minutes idle timeout + 2 minutes warning countdown.
+  const expiresAt = new Date(
+    now.getTime() + 17 * 60 * 1000
+  );
+
+  const token = jwt.sign(
+    {
+      sub: userId,
+      sid: sessionId,
+    },
+    secret,
+    {
+      expiresIn: "1h",
+    }
+  );
+
+  await Session.create({
+    userId,
+    sessionId,
+    lastActivityAt: now,
+    expiresAt,
+    revokedAt: null,
   });
+
+  return token;
 }
 
 function publicUser(user: {
@@ -161,7 +196,7 @@ router.post(
         role: "candidate",
       });
 
-      const token = createToken(String(user._id));
+      const token = await createAuthenticatedSession(String(user._id));
 
       res.status(201).json({
         success: true,
@@ -402,7 +437,9 @@ router.post(
         return;
       }
 
-      const token = createToken(String(user._id));
+      const token = await createAuthenticatedSession(
+  String(user._id)
+);
 
       res.status(200).json({
         success: true,
@@ -588,18 +625,31 @@ router.post(
         return;
       }
 
-      user.password = await bcrypt.hash(password, 12);
-      await user.save();
+  user.password = await bcrypt.hash(password, 12);
+await user.save();
 
-      // Consume all reset links and pending OTPs for this user.
-      await PasswordResetToken.deleteMany({ userId: user._id });
-      await LoginOtp.deleteMany({ userId: user._id });
+// Consume all reset links and pending OTPs for this user.
+await PasswordResetToken.deleteMany({ userId: user._id });
+await LoginOtp.deleteMany({ userId: user._id });
 
-      res.status(200).json({
-        success: true,
-        message:
-          "Your password has been reset. You can now sign in with your new password.",
-      });
+// Revoke all active sessions after password reset.
+await Session.updateMany(
+  {
+    userId: user._id,
+    revokedAt: null,
+  },
+  {
+    $set: {
+      revokedAt: new Date(),
+    },
+  }
+);
+
+res.status(200).json({
+  success: true,
+  message:
+    "Your password has been reset. All previous sessions have been logged out. Please sign in again.",
+});
     } catch (error: unknown) {
       console.error("Reset-password error:", error);
 
@@ -710,7 +760,9 @@ router.post(
       }
 
       // Preserve existing roles and targetRole for existing accounts.
-      const token = createToken(String(user._id));
+      const token = await createAuthenticatedSession(
+  String(user._id)
+);
 
       res.status(200).json({
         success: true,
@@ -733,43 +785,130 @@ router.post(
 );
 
 
-function getAuthenticatedUserId(req: Request): string | null {
-  const authorization = req.headers.authorization;
+// =====================================================
+// REFRESH ACTIVE SESSION
+// POST /api/auth/session/refresh
+// =====================================================
 
-  if (!authorization?.startsWith("Bearer ")) {
-    return null;
-  }
+router.post(
+  "/session/refresh",
+  authenticate,
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      if (!req.userId || !req.sessionId) {
+        res.status(401).json({
+          success: false,
+          message: "Authentication required. Please log in again.",
+        });
+        return;
+      }
 
-  const token = authorization.slice(7).trim();
-  const secret = process.env.JWT_SECRET;
+      const now = new Date();
 
-  if (!token || !secret) {
-    return null;
-  }
+      const updatedSession = await Session.findOneAndUpdate(
+        {
+          userId: req.userId,
+          sessionId: req.sessionId,
+          revokedAt: null,
+          expiresAt: { $gt: now },
+        },
+        {
+          $set: {
+            lastActivityAt: now,
+            expiresAt: new Date(now.getTime() + 17 * 60 * 1000),
+          },
+        },
+        { new: true }
+      );
 
-  try {
-    const decoded = jwt.verify(token, secret);
+      if (!updatedSession) {
+        res.status(401).json({
+          success: false,
+          message: "Your session has expired. Please log in again.",
+        });
+        return;
+      }
 
-    if (
-      typeof decoded === "string" ||
-      typeof decoded.sub !== "string"
-    ) {
-      return null;
+      res.status(200).json({
+        success: true,
+        message: "Your session has been extended successfully.",
+        expiresAt: updatedSession.expiresAt,
+      });
+    } catch (error: unknown) {
+      console.error("Session refresh error:", error);
+
+      res.status(500).json({
+        success: false,
+        message: "Unable to extend your session right now.",
+      });
     }
-
-    return decoded.sub;
-  } catch {
-    return null;
   }
-}
+);
+
+// =====================================================
+// LOGOUT — REVOKE ACTIVE SESSION
+// POST /api/auth/logout
+// =====================================================
+
+router.post(
+  "/logout",
+  authenticate,
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      if (!req.userId || !req.sessionId) {
+        res.status(401).json({
+          success: false,
+          message: "Authentication required.",
+        });
+        return;
+      }
+
+      const result = await Session.updateOne(
+        {
+          userId: req.userId,
+          sessionId: req.sessionId,
+          revokedAt: null,
+        },
+        {
+          $set: {
+            revokedAt: new Date(),
+          },
+        }
+      );
+
+      if (result.modifiedCount !== 1) {
+        res.status(401).json({
+          success: false,
+          message: "This session is already expired or revoked.",
+        });
+        return;
+      }
+
+      res.status(200).json({
+        success: true,
+        message: "You have been logged out successfully.",
+      });
+    } catch (error: unknown) {
+      console.error("Logout error:", error);
+
+      res.status(500).json({
+        success: false,
+        message: "Unable to log out right now.",
+      });
+    }
+  }
+);
+
+
 
 // GET /api/auth/me
 // Retrieve the profile of the authenticated user.
 router.get(
   "/me",
+  authenticate,
   async (req: Request, res: Response): Promise<void> => {
     try {
-      const userId = getAuthenticatedUserId(req);
+      const userId = req.userId;
 
       if (!userId) {
         res.status(401).json({
@@ -817,9 +956,10 @@ const updateProfileSchema = z.object({
 // Update the authenticated user's profile.
 router.patch(
   "/me",
+  authenticate,
   async (req: Request, res: Response): Promise<void> => {
     try {
-      const userId = getAuthenticatedUserId(req);
+      const userId = req.userId;
 
       if (!userId) {
         res.status(401).json({
@@ -878,6 +1018,5 @@ router.patch(
     }
   }
 );
-
 
 export default router;

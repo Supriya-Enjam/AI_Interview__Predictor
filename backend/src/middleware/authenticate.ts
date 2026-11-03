@@ -1,20 +1,22 @@
 
 import type { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
+import { Session } from "../models/Session";
 
 declare global {
   namespace Express {
     interface Request {
       userId?: string;
+      sessionId?: string;
     }
   }
 }
 
-export function authenticate(
+export async function authenticate(
   req: Request,
   res: Response,
   next: NextFunction
-): void {
+): Promise<void> {
   try {
     const authorization = req.headers.authorization;
 
@@ -44,22 +46,64 @@ export function authenticate(
     if (
       typeof decoded === "string" ||
       typeof decoded.sub !== "string" ||
-      !/^[a-f\d]{24}$/i.test(decoded.sub)
+      !/^[a-f\d]{24}$/i.test(decoded.sub) ||
+      typeof decoded.sid !== "string" ||
+      decoded.sid.length === 0
     ) {
       res.status(401).json({
         success: false,
-        message: "Invalid authentication token.",
+        message: "Invalid authentication token. Please log in again.",
+      });
+      return;
+    }
+
+    const now = new Date();
+
+    // Find and refresh only a valid, active session.
+    const activeSession = await Session.findOneAndUpdate(
+      {
+        userId: decoded.sub,
+        sessionId: decoded.sid,
+        revokedAt: null,
+        expiresAt: { $gt: now },
+      },
+      {
+        $set: {
+          lastActivityAt: now,
+          expiresAt: new Date(now.getTime() + 17 * 60 * 1000),
+        },
+      },
+      {
+        new: true,
+      }
+    );
+
+    if (!activeSession) {
+      res.status(401).json({
+        success: false,
+        message: "Your session has expired or been revoked. Please log in again.",
       });
       return;
     }
 
     req.userId = decoded.sub;
+    req.sessionId = decoded.sid;
 
     next();
-  } catch {
-    res.status(401).json({
+  } catch (error: unknown) {
+    if (error instanceof jwt.JsonWebTokenError) {
+      res.status(401).json({
+        success: false,
+        message: "Your session is invalid or expired. Please log in again.",
+      });
+      return;
+    }
+
+    console.error("Authentication middleware error:", error);
+
+    res.status(500).json({
       success: false,
-      message: "Your session is invalid or expired. Please log in again.",
+      message: "Unable to verify your session right now.",
     });
   }
 }

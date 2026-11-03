@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   BrowserRouter,
   Navigate,
@@ -30,6 +30,18 @@ import AdminInterviewManagementPage from "./pages/AdminInterviewManagementPage";
 import ResumeInterviewPage from "./pages/ResumeInterviewPage";
 import DashboardLayout from "./components/DashboardLayout";
 import LearningPlanPage from "./pages/LearningPlanPage";
+
+import {
+  refreshSession,
+  logoutUser,
+} from "./services/authApi";
+
+// =====================================================
+// SESSION TIMEOUT SETTINGS
+// =====================================================
+
+const IDLE_TIMEOUT = 15 * 1000; // 10 seconds for testing, change to 15 * 60 * 1000 for 15 minutes 
+const WARNING_DURATION = 30; // 30 seconds countdown for testing, change to 60 for 1 minute
 
 interface AuthUser {
   id: string;
@@ -69,6 +81,16 @@ function ProtectedLayout({
 function AppRoutes() {
   const navigate = useNavigate();
 
+  const [showSessionWarning, setShowSessionWarning] = useState(false);
+const [remainingSeconds, setRemainingSeconds] = useState(
+  WARNING_DURATION
+);
+
+const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(
+  null
+);
+
   const [session, setSession] = useState<AuthSession | null>(() => {
     try {
       const saved = sessionStorage.getItem("interviewiq_session");
@@ -79,7 +101,7 @@ function AppRoutes() {
     }
   });
 
-  function handleAuthSuccess(token: string, user: AuthUser) {
+ function handleAuthSuccess(token: string, user: AuthUser) {
   const newSession: AuthSession = { token, user };
 
   sessionStorage.setItem(
@@ -88,6 +110,7 @@ function AppRoutes() {
   );
 
   setSession(newSession);
+  setShowSessionWarning(false);
 
   navigate(
     user.role === "admin" ? "/admin/dashboard" : "/dashboard",
@@ -95,15 +118,150 @@ function AppRoutes() {
   );
 }
 
-  function handleLogout() {
+  async function handleLogout() {
+  const currentToken = session?.token;
+
+  // Clear timers immediately to prevent repeated logout attempts.
+  clearSessionTimers();
+
+  try {
+    if (currentToken) {
+      await logoutUser(currentToken);
+    }
+  } catch (error) {
+    console.error("Backend logout failed:", error);
+  } finally {
     sessionStorage.removeItem("interviewiq_session");
     sessionStorage.removeItem("interviewiq_current_interview");
+
+    setShowSessionWarning(false);
     setSession(null);
+
     navigate("/login", { replace: true });
   }
+}
 
-  return (
-    <Routes>
+  const clearSessionTimers = useCallback(() => {
+  if (idleTimerRef.current) {
+    clearTimeout(idleTimerRef.current);
+    idleTimerRef.current = null;
+  }
+
+  if (countdownTimerRef.current) {
+    clearInterval(countdownTimerRef.current);
+    countdownTimerRef.current = null;
+  }
+}, []);
+
+const startIdleTimer = useCallback(() => {
+  clearSessionTimers();
+
+  setShowSessionWarning(false);
+  setRemainingSeconds(WARNING_DURATION);
+
+  idleTimerRef.current = setTimeout(() => {
+    setShowSessionWarning(true);
+    setRemainingSeconds(WARNING_DURATION);
+  }, IDLE_TIMEOUT);
+}, [clearSessionTimers]);
+
+const stayLoggedIn = useCallback(async () => {
+  if (!session?.token) {
+    await handleLogout();
+    return;
+  }
+
+  try {
+    await refreshSession(session.token);
+
+    // Restart the idle timer only after backend confirmation.
+    startIdleTimer();
+  } catch (error) {
+    console.error("Session refresh failed:", error);
+    await handleLogout();
+  }
+}, [session, startIdleTimer]);
+
+useEffect(() => {
+  if (!session) {
+    clearSessionTimers();
+    setShowSessionWarning(false);
+    return;
+  }
+
+  // Do not restart the idle timer while the warning is visible.
+  if (showSessionWarning) {
+    return;
+  }
+
+  const activityEvents = [
+    "mousedown",
+    "keydown",
+    "scroll",
+    "touchstart",
+    "click",
+  ];
+
+  const handleActivity = () => {
+    startIdleTimer();
+  };
+
+  activityEvents.forEach((event) => {
+    window.addEventListener(event, handleActivity);
+  });
+
+  // Start the initial idle timer.
+  startIdleTimer();
+
+  return () => {
+    activityEvents.forEach((event) => {
+      window.removeEventListener(event, handleActivity);
+    });
+
+    // Clear only the idle timer.
+    // Do not clear the warning countdown here.
+    if (idleTimerRef.current) {
+      clearTimeout(idleTimerRef.current);
+      idleTimerRef.current = null;
+    }
+  };
+}, [
+  session,
+  showSessionWarning,
+  startIdleTimer,
+  clearSessionTimers,
+]);
+
+useEffect(() => {
+  if (!showSessionWarning) return;
+
+  countdownTimerRef.current = setInterval(() => {
+    setRemainingSeconds((previous) => {
+      if (previous <= 1) {
+        if (countdownTimerRef.current) {
+          clearInterval(countdownTimerRef.current);
+          countdownTimerRef.current = null;
+        }
+
+        handleLogout();
+        return 0;
+      }
+
+      return previous - 1;
+    });
+  }, 1000);
+
+  return () => {
+    if (countdownTimerRef.current) {
+      clearInterval(countdownTimerRef.current);
+      countdownTimerRef.current = null;
+    }
+  };
+}, [showSessionWarning]);
+
+    return (
+        <>
+      <Routes>
       {/* Public pages */}
       <Route
         path="/"
@@ -287,22 +445,80 @@ function AppRoutes() {
       
 
       {/* Unknown URLs */}
-      <Route
-  path="*"
-  element={
-    <Navigate
-      to={
-        session
-          ? session.user.role === "admin"
-            ? "/admin/dashboard"
-            : "/dashboard"
-          : "/"
-      }
-      replace
-    />
-  }
-/>
-    </Routes>
+          <Route
+        path="*"
+        element={
+          <Navigate
+            to={
+              session
+                ? session.user.role === "admin"
+                  ? "/admin/dashboard"
+                  : "/dashboard"
+                : "/"
+            }
+            replace
+          />
+        }
+      />
+      </Routes>
+
+      {/* Session expiration warning popup */}
+      {session && showSessionWarning && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="session-warning-title"
+            className="w-full max-w-md rounded-3xl border border-slate-700 bg-slate-900 p-8 text-center text-white shadow-2xl"
+          >
+            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-amber-500/15 text-amber-400">
+              <span className="text-3xl">⏱</span>
+            </div>
+
+            <h2
+              id="session-warning-title"
+              className="text-2xl font-bold"
+            >
+              Your session is about to expire
+            </h2>
+
+            <p className="mt-3 text-sm leading-6 text-slate-400">
+              You have been inactive. For your security, you will
+              automatically be logged out when the countdown reaches zero.
+            </p>
+
+            <div className="my-7">
+              <p className="text-5xl font-bold tabular-nums text-amber-400">
+                {String(Math.floor(remainingSeconds / 60)).padStart(2, "0")}:
+                {String(remainingSeconds % 60).padStart(2, "0")}
+              </p>
+
+              <p className="mt-2 text-xs text-slate-500">
+                Time remaining
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <button
+                type="button"
+                onClick={stayLoggedIn}
+                className="w-full rounded-xl bg-indigo-500 px-5 py-3 font-semibold text-white transition hover:bg-indigo-400"
+              >
+                Stay Logged In
+              </button>
+
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="w-full rounded-xl border border-slate-700 px-5 py-3 font-semibold text-slate-300 transition hover:bg-slate-800"
+              >
+                Log Out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
