@@ -76,8 +76,42 @@ export default function InterviewSessionPage({
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
 
-  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  type VoiceDeliveryFeedback = {
+  score: number;
+  pace: string;
+  pauseFeedback: string;
+  recommendation: string;
+};
+  // Voice delivery metrics
+  const [voiceDuration, setVoiceDuration] = useState(0);
 
+  const [voiceMetrics, setVoiceMetrics] = useState<{
+    wordCount: number;
+    wordsPerMinute: number;
+    pauseCount: number;
+    totalSilenceSeconds: number;
+    longestPauseSeconds: number;
+    } | null>(null);
+
+  const [deliveryFeedback, setDeliveryFeedback] =
+    useState<VoiceDeliveryFeedback | null>(null);
+
+  const voiceStartTimeRef = useRef<number | null>(null);
+  const latestAnswersRef = useRef<Record<string, string>>({});
+
+  // Audio analysis references
+  const audioStreamRef = useRef<MediaStream | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const audioFrameRef = useRef<number | null>(null);
+
+  const silenceStartRef = useRef<number | null>(null);
+  const totalSilenceRef = useRef(0);
+  const longestPauseRef = useRef(0);
+  const pauseCountRef = useRef(0);
+  const pauseRecordedRef = useRef(false);
+
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   // =========================================================
   // CHECK BROWSER VOICE SUPPORT AND CLEANUP
   // =========================================================
@@ -94,8 +128,9 @@ export default function InterviewSessionPage({
 
     setVoiceSupported(Boolean(Recognition));
 
-    return () => {
+        return () => {
       recognitionRef.current?.abort();
+      cleanupAudioAnalysis();
       window.speechSynthesis?.cancel();
     };
   }, []);
@@ -154,6 +189,7 @@ export default function InterviewSessionPage({
         };
 
         setAnswers(mergedAnswers);
+        latestAnswersRef.current = mergedAnswers;
 
         if (result.status === "completed") {
           setCompleted(true);
@@ -220,6 +256,7 @@ export default function InterviewSessionPage({
     };
 
     setAnswers(updatedAnswers);
+    latestAnswersRef.current = updatedAnswers;
     setError("");
 
     if (id) {
@@ -265,11 +302,104 @@ export default function InterviewSessionPage({
     window.speechSynthesis.speak(utterance);
   }
 
+    // =========================================================
+  // CLEAN UP LOCAL AUDIO ANALYSIS
+  // =========================================================
+
+  function cleanupAudioAnalysis() {
+    if (audioFrameRef.current !== null) {
+      cancelAnimationFrame(audioFrameRef.current);
+      audioFrameRef.current = null;
+    }
+
+    audioStreamRef.current?.getTracks().forEach((track) => {
+      track.stop();
+    });
+
+    audioStreamRef.current = null;
+
+    if (audioContextRef.current) {
+      void audioContextRef.current.close();
+      audioContextRef.current = null;
+    }
+
+    analyserRef.current = null;
+    silenceStartRef.current = null;
+  }
+
+  // =========================================================
+  // MONITOR MICROPHONE SILENCE
+  // =========================================================
+
+  function startSilenceDetection() {
+    const analyser = analyserRef.current;
+
+    if (!analyser) return;
+
+    const samples = new Uint8Array(analyser.fftSize);
+    const SILENCE_THRESHOLD = 0.025;
+    const LONG_PAUSE_MS = 2000;
+
+    const analyseAudio = () => {
+      if (!analyserRef.current) return;
+
+      analyser.getByteTimeDomainData(samples);
+
+      let sum = 0;
+
+      for (const sample of samples) {
+        const normalized = (sample - 128) / 128;
+        sum += normalized * normalized;
+      }
+
+      const rms = Math.sqrt(sum / samples.length);
+      const now = Date.now();
+
+      if (rms < SILENCE_THRESHOLD) {
+        if (silenceStartRef.current === null) {
+          silenceStartRef.current = now;
+          pauseRecordedRef.current = false;
+        }
+
+        const silenceDuration = now - silenceStartRef.current;
+
+        if (
+          silenceDuration >= LONG_PAUSE_MS &&
+          !pauseRecordedRef.current
+        ) {
+          pauseCountRef.current += 1;
+          pauseRecordedRef.current = true;
+        }
+      } else if (silenceStartRef.current !== null) {
+        const silenceDuration = Math.max(
+          0,
+          now - silenceStartRef.current
+        );
+
+        totalSilenceRef.current += silenceDuration;
+
+        if (pauseRecordedRef.current) {
+          longestPauseRef.current = Math.max(
+            longestPauseRef.current,
+            silenceDuration
+          );
+        }
+
+        silenceStartRef.current = null;
+        pauseRecordedRef.current = false;
+      }
+
+      audioFrameRef.current = requestAnimationFrame(analyseAudio);
+    };
+
+    audioFrameRef.current = requestAnimationFrame(analyseAudio);
+  }
+
   // =========================================================
   // START VOICE INPUT
   // =========================================================
 
-  function startVoiceInput() {
+    async function startVoiceInput() {
     const browserWindow = window as Window & {
       SpeechRecognition?: SpeechRecognitionConstructor;
       webkitSpeechRecognition?: SpeechRecognitionConstructor;
@@ -322,6 +452,8 @@ export default function InterviewSessionPage({
           [questionId]: `${existingAnswer}${existingAnswer ? " " : ""}${recognizedText}`,
         };
 
+        latestAnswersRef.current = updatedAnswers;
+
         if (id) {
           try {
             sessionStorage.setItem(
@@ -355,33 +487,207 @@ export default function InterviewSessionPage({
       setIsListening(false);
     };
 
-    recognitionRef.current = recognition;
+        recognitionRef.current = recognition;
     setError("");
 
     try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+      });
+
+      const audioContext = new AudioContext();
+      const source = audioContext.createMediaStreamSource(stream);
+      const analyser = audioContext.createAnalyser();
+
+      analyser.fftSize = 2048;
+      source.connect(analyser);
+
+      audioStreamRef.current = stream;
+      audioContextRef.current = audioContext;
+      analyserRef.current = analyser;
+
+      voiceStartTimeRef.current = Date.now();
+
+      totalSilenceRef.current = 0;
+      longestPauseRef.current = 0;
+      pauseCountRef.current = 0;
+      silenceStartRef.current = null;
+      pauseRecordedRef.current = false;
+
+           setVoiceDuration(0);
+      setVoiceMetrics(null);
+      setDeliveryFeedback(null);
+
+      await audioContext.resume();
+
+      startSilenceDetection();
+
       recognition.start();
       setIsListening(true);
-    } catch {
+    } catch (err) {
+      cleanupAudioAnalysis();
+      voiceStartTimeRef.current = null;
       setIsListening(false);
-      setError("Unable to start voice input. Please try again.");
+
+      setError(
+        err instanceof Error && err.name === "NotAllowedError"
+          ? "Microphone access was denied. Please allow microphone permission."
+          : "Unable to start voice input. Please check your microphone and try again."
+      );
     }
   }
-
-  // =========================================================
+  
+    // =========================================================
   // STOP VOICE INPUT
   // =========================================================
 
   function stopVoiceInput() {
     recognitionRef.current?.stop();
     setIsListening(false);
+    calculateVoiceMetrics();
+    cleanupAudioAnalysis();
   }
+
+  // =========================================================
+  // CALCULATE VOICE DELIVERY METRICS
+  // =========================================================
+
+  function calculateVoiceMetrics() {
+    const startTime = voiceStartTimeRef.current;
+
+    if (!startTime || !currentQuestion) return;
+
+    const now = Date.now();
+
+    const durationSeconds = Math.max(
+      1,
+      Math.round((now - startTime) / 1000)
+    );
+
+    if (silenceStartRef.current !== null) {
+      const finalSilence = now - silenceStartRef.current;
+
+      totalSilenceRef.current += finalSilence;
+
+      if (finalSilence >= 2000 && !pauseRecordedRef.current) {
+        pauseCountRef.current += 1;
+      }
+
+      if (finalSilence >= 2000) {
+        longestPauseRef.current = Math.max(
+          longestPauseRef.current,
+          finalSilence
+        );
+      }
+    }
+
+    const answer =
+      latestAnswersRef.current[currentQuestion.questionId] ??
+      answers[currentQuestion.questionId] ??
+      "";
+
+    const wordCount = answer.trim()
+      ? answer.trim().split(/\s+/).length
+      : 0;
+
+    const wordsPerMinute = Math.round(
+      (wordCount / durationSeconds) * 60
+    );
+
+    setVoiceDuration(durationSeconds);
+
+       const pauseCount = pauseCountRef.current;
+
+    const totalSilenceSeconds = Math.round(
+      totalSilenceRef.current / 1000
+    );
+
+    const longestPauseSeconds = Math.round(
+      longestPauseRef.current / 1000
+    );
+
+    setVoiceMetrics({
+      wordCount,
+      wordsPerMinute,
+      pauseCount,
+      totalSilenceSeconds,
+      longestPauseSeconds,
+    });
+
+    setDeliveryFeedback(
+      calculateDeliveryFeedback(
+        wordsPerMinute,
+        pauseCount,
+        longestPauseSeconds
+      )
+    );
+
+    voiceStartTimeRef.current = null;
+  }
+
+  // =========================================================
+// CALCULATE VOICE DELIVERY FEEDBACK
+// =========================================================
+
+function calculateDeliveryFeedback(
+  wordsPerMinute: number,
+  pauseCount: number,
+  longestPauseSeconds: number
+): VoiceDeliveryFeedback {
+  let score = 100;
+
+  let pace = "Good speaking pace";
+
+  if (wordsPerMinute < 90) {
+    score -= 15;
+    pace = "Your speaking pace is slow";
+  } else if (wordsPerMinute > 170) {
+    score -= 20;
+    pace = "Your speaking pace is too fast";
+  }
+
+  let pauseFeedback = "Good pause management";
+
+  if (pauseCount >= 4) {
+    score -= 20;
+    pauseFeedback = "Frequent long pauses detected";
+  } else if (pauseCount >= 2) {
+    score -= 10;
+    pauseFeedback = "A few long pauses detected";
+  }
+
+  if (longestPauseSeconds >= 8) {
+    score -= 10;
+  }
+
+  score = Math.max(0, score);
+
+  let recommendation = "Excellent delivery. Maintain this speaking rhythm.";
+
+  if (score < 85 && score >= 65) {
+    recommendation =
+      "Good effort. Practise maintaining a steady speaking flow.";
+  } else if (score < 65) {
+    recommendation =
+      "Practise speaking clearly and organizing your thoughts before answering.";
+  }
+
+  return {
+    score,
+    pace,
+    pauseFeedback,
+    recommendation,
+  };
+}
 
   // =========================================================
   // STOP VOICE WHEN CHANGING QUESTIONS
   // =========================================================
 
-  useEffect(() => {
+    useEffect(() => {
     recognitionRef.current?.abort();
+    cleanupAudioAnalysis();
+    voiceStartTimeRef.current = null;
     setIsListening(false);
 
     window.speechSynthesis?.cancel();
@@ -760,6 +1066,117 @@ export default function InterviewSessionPage({
                   </button>
                 )}
               </div>
+
+              {/* VOICE DELIVERY METRICS */}
+
+{voiceMetrics && (
+  <div className="mt-5 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-5">
+    <h3 className="font-semibold text-emerald-300">
+      Voice Delivery Analysis
+    </h3>
+
+    <div className="mt-4 grid grid-cols-2 gap-3">
+      <div className="rounded-xl bg-slate-950 p-3">
+        <p className="text-xs text-slate-400">
+          Words spoken
+        </p>
+        <p className="mt-1 text-2xl font-bold">
+          {voiceMetrics.wordCount}
+        </p>
+      </div>
+
+      <div className="rounded-xl bg-slate-950 p-3">
+        <p className="text-xs text-slate-400">
+          Speaking speed
+        </p>
+        <p className="mt-1 text-2xl font-bold">
+          {voiceMetrics.wordsPerMinute} WPM
+        </p>
+      </div>
+
+      <div className="col-span-2 rounded-xl bg-slate-950 p-3">
+        <p className="text-xs text-slate-400">
+          Recording duration
+        </p>
+        <p className="mt-1 text-2xl font-bold">
+          {Math.floor(voiceDuration / 60)}:
+          {String(voiceDuration % 60).padStart(2, "0")}
+        </p>
+      </div>
+      <div className="rounded-xl bg-slate-950 p-3">
+        <p className="text-xs text-slate-400">
+          Long pauses
+        </p>
+        <p className="mt-1 text-2xl font-bold">
+          {voiceMetrics.pauseCount}
+        </p>
+      </div>
+
+      <div className="rounded-xl bg-slate-950 p-3">
+        <p className="text-xs text-slate-400">
+          Total silence
+        </p>
+        <p className="mt-1 text-2xl font-bold">
+          {voiceMetrics.totalSilenceSeconds}s
+        </p>
+      </div>
+
+      <div className="col-span-2 rounded-xl bg-slate-950 p-3">
+        <p className="text-xs text-slate-400">
+          Longest pause
+        </p>
+        <p className="mt-1 text-2xl font-bold">
+          {voiceMetrics.longestPauseSeconds}s
+        </p>
+      </div>
+
+    </div>
+
+    <p className="mt-3 text-xs text-slate-400">
+      Speaking speed is an estimate based on the recording
+      duration and recognized answer text.
+    </p>
+    <p className="mt-3 text-sm text-slate-300">
+      {voiceMetrics.pauseCount === 0
+        ? "No pauses longer than 2 seconds were detected."
+        : voiceMetrics.pauseCount <= 2
+          ? "A few long pauses were detected. Try maintaining a smoother speaking flow."
+          : "Several long pauses were detected. Practise organizing your thoughts before answering."}
+    </p>
+
+  </div>
+)}
+
+{deliveryFeedback && (
+  <div className="mt-4 rounded-2xl border border-indigo-500/30 bg-indigo-500/10 p-5">
+    <h3 className="text-lg font-semibold text-indigo-300">
+      Voice Delivery Assessment
+    </h3>
+
+    <p className="mt-3 text-3xl font-bold text-white">
+      {deliveryFeedback.score}/100
+    </p>
+
+    <div className="mt-4 space-y-3 text-sm text-slate-200">
+      <p>
+        <span className="font-semibold text-indigo-300">Speaking pace:</span>{" "}
+        {deliveryFeedback.pace}
+      </p>
+
+      <p>
+        <span className="font-semibold text-indigo-300">Pauses:</span>{" "}
+        {deliveryFeedback.pauseFeedback}
+      </p>
+
+      <p className="leading-6 text-slate-300">
+        <span className="font-semibold text-indigo-300">
+          Recommendation:
+        </span>{" "}
+        {deliveryFeedback.recommendation}
+      </p>
+    </div>
+  </div>
+)}
 
               <p className="mt-3 text-xs text-slate-400" aria-live="polite">
                 {isListening
