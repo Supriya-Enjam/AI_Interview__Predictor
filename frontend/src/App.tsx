@@ -31,6 +31,8 @@ import ResumeInterviewPage from "./pages/ResumeInterviewPage";
 import DashboardLayout from "./components/DashboardLayout";
 import LearningPlanPage from "./pages/LearningPlanPage";
 
+import CookieConsent from "./components/CookieConsent";
+
 import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
 import TermsAndConditionsPage from "./pages/TermsAndConditionsPage";
 
@@ -473,7 +475,10 @@ useEffect(() => {
           />
         }
       />
-      </Routes>
+           </Routes>
+
+      {/* Global Cookie Consent Banner */}
+      <CookieConsent />
 
       {/* Session expiration warning popup */}
       {session && showSessionWarning && (
