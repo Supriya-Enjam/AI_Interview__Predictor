@@ -14,7 +14,13 @@
     "mae": 3.39,
     "rmse": 4.24,
     "r2_score": 0.8407,
+    "cross_validation": {
+        "folds": 5,
+        "mean_mae": 3.24,
+        "std_mae": 0.11,
+        "mean_r2": 0.873
+    },
     "training_data": "synthetic",
-    "trained_at": "2026-11-02T10:48:44.111177+00:00",
-    "notice": "These metrics are calculated using synthetic training data. They do not establish real-world model accuracy."
+    "trained_at": "2026-11-03T08:42:16.827287+00:00",
+    "notice": "Metrics are calculated using synthetic training data. Cross-validation and test scores do not establish real-world interview prediction accuracy."
 }

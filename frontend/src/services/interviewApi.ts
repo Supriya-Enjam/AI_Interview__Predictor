@@ -360,6 +360,40 @@ export interface InterviewHistoryItem {
 }
 
 // =========================================================
+// ML PREDICTION ACCURACY TYPES
+// =========================================================
+
+export interface MLPredictionAccuracy {
+  predictionCount: number;
+  averagePredictedScore: number | null;
+  averageActualScore: number | null;
+  meanAbsoluteError: number | null;
+  scoreAgreement: number | null;
+  message: string;
+}
+
+export interface MLModelMetrics {
+  model_name: string;
+  model_type: string;
+  features: string[];
+  training_samples: number;
+  test_samples: number;
+  total_samples: number;
+  mae: number;
+  rmse: number;
+  r2_score: number;
+  cross_validation?: {
+    folds: number;
+    mean_mae: number;
+    std_mae: number;
+    mean_r2: number;
+  };
+  training_data: string;
+  trained_at: string;
+  notice: string;
+}
+
+// =========================================================
 // INTERVIEW READINESS
 // =========================================================
 
@@ -522,4 +556,43 @@ export async function evaluateInterview(
   }
 
   return data.evaluation as InterviewEvaluationSummary;
+}
+
+// =========================================================
+// GET ML PREDICTION ACCURACY
+// GET /api/interviews/ml-accuracy
+// =========================================================
+
+export async function getMLPredictionAccuracy(
+  token: string
+): Promise<MLPredictionAccuracy> {
+  const data = await requestInterviewApi(
+    "/ml-accuracy",
+    token,
+    {
+      method: "GET",
+    }
+  );
+
+  if (!data.accuracy || typeof data.accuracy !== "object") {
+    throw new Error("Invalid ML prediction accuracy response.");
+  }
+
+  return data.accuracy as MLPredictionAccuracy;
+}
+
+export async function getMLModelInfo(
+  token: string
+): Promise<MLModelMetrics> {
+  const data = await requestInterviewApi(
+    "/ml-model-info",
+    token,
+    { method: "GET" }
+  );
+
+  if (!data.metrics || typeof data.metrics !== "object") {
+    throw new Error("Invalid ML model information response.");
+  }
+
+  return data.metrics as MLModelMetrics;
 }

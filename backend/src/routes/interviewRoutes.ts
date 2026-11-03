@@ -551,7 +551,158 @@ router.get(
     }
   }
 );
+// =========================================================
+// GET ML PREDICTION ACCURACY
+// GET /api/interviews/ml-accuracy
+// =========================================================
 
+// GET ML MODEL TRAINING INFORMATION
+router.get(
+  "/ml-model-info",
+  authenticateRequest,
+  async (_req: AuthenticatedRequest, res: Response) => {
+    try {
+      const mlServiceUrl =
+        process.env.ML_SERVICE_URL || "http://127.0.0.1:8000";
+
+      const response = await fetch(
+        `${mlServiceUrl}/model-info`,
+        {
+          method: "GET",
+          signal: AbortSignal.timeout(10000),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+
+        res.status(response.status).json({
+          success: false,
+          message: `ML service error: ${errorText}`,
+        });
+        return;
+      }
+
+      const modelInfo = await response.json();
+
+      res.status(200).json(modelInfo);
+    } catch (error) {
+      console.error("ML model information error:", error);
+
+      res.status(503).json({
+        success: false,
+        message: "Unable to retrieve ML model information.",
+      });
+    }
+  }
+);
+
+router.get(
+  "/ml-accuracy",
+  authenticateRequest,
+  async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const interviews = await Interview.find({
+        candidateId: req.userId,
+        status: "completed",
+      })
+        .select("evaluation.percentage evaluation.mlPrediction.predictedScore")
+        .lean();
+
+      const validPredictions = interviews
+        .map((interview) => {
+          const actualScore = interview.evaluation?.percentage;
+          const predictedScore =
+            interview.evaluation?.mlPrediction?.predictedScore;
+
+          if (
+            typeof actualScore !== "number" ||
+            !Number.isFinite(actualScore) ||
+            typeof predictedScore !== "number" ||
+            !Number.isFinite(predictedScore)
+          ) {
+            return null;
+          }
+
+          return { actualScore, predictedScore };
+        })
+        .filter(
+          (
+            item
+          ): item is {
+            actualScore: number;
+            predictedScore: number;
+          } => item !== null
+        );
+
+      const predictionCount = validPredictions.length;
+
+      if (predictionCount === 0) {
+        res.status(200).json({
+          success: true,
+          accuracy: {
+            predictionCount: 0,
+            averagePredictedScore: null,
+            averageActualScore: null,
+            meanAbsoluteError: null,
+            scoreAgreement: null,
+            message: "Complete interviews with ML predictions to see accuracy statistics.",
+          },
+        });
+        return;
+      }
+
+      const average = (values: number[]) =>
+        values.reduce((sum, value) => sum + value, 0) /
+        values.length;
+
+      const averagePredictedScore = average(
+        validPredictions.map((item) => item.predictedScore)
+      );
+
+      const averageActualScore = average(
+        validPredictions.map((item) => item.actualScore)
+      );
+
+      const meanAbsoluteError = average(
+        validPredictions.map((item) =>
+          Math.abs(item.predictedScore - item.actualScore)
+        )
+      );
+
+      const scoreAgreement = Math.max(
+        0,
+        100 - meanAbsoluteError
+      );
+
+      res.status(200).json({
+        success: true,
+        accuracy: {
+          predictionCount,
+          averagePredictedScore: Number(
+            averagePredictedScore.toFixed(2)
+          ),
+          averageActualScore: Number(
+            averageActualScore.toFixed(2)
+          ),
+          meanAbsoluteError: Number(
+            meanAbsoluteError.toFixed(2)
+          ),
+          scoreAgreement: Number(scoreAgreement.toFixed(2)),
+          message:
+            "Score agreement measures how closely ML predictions match rubric evaluation scores. It is not a measure of hiring success.",
+        },
+      });
+    } catch (error) {
+      console.error("ML prediction accuracy error:", error);
+
+      res.status(500).json({
+        success: false,
+        message: "Unable to calculate ML prediction accuracy.",
+      });
+    }
+  }
+);
 // =========================================================
 // GET INTERVIEW READINESS
 // GET /api/interviews/readiness

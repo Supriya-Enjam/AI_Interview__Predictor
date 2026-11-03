@@ -28,9 +28,13 @@ import {
   getInterviewHistory,
   getInterviewReadiness,
   getSkillGaps,
+  getMLPredictionAccuracy,
+  getMLModelInfo,
   type InterviewHistoryItem,
   type InterviewReadinessSummary,
   type SkillGapSummary,
+  type MLPredictionAccuracy,
+  type MLModelMetrics,
 } from "../services/interviewApi";
 
 interface DashboardPageProps {
@@ -77,6 +81,25 @@ export default function DashboardPage({ token }: DashboardPageProps) {
   const [readiness, setReadiness] =
     useState<InterviewReadinessSummary | null>(null);
   const [readinessLoading, setReadinessLoading] = useState(true);
+
+  // ML prediction accuracy state.
+const [mlAccuracy, setMLAccuracy] =
+  useState<MLPredictionAccuracy | null>(null);
+
+const [mlAccuracyLoading, setMLAccuracyLoading] =
+  useState(true);
+
+const [mlAccuracyError, setMLAccuracyError] = useState("");
+
+// ML model training metrics state.
+const [modelMetrics, setModelMetrics] =
+  useState<MLModelMetrics | null>(null);
+
+const [modelMetricsLoading, setModelMetricsLoading] =
+  useState(true);
+
+const [modelMetricsError, setModelMetricsError] =
+  useState("");
 
   const [skillGaps, setSkillGaps] = useState<SkillGapSummary[]>([]);
   const [skillGapsLoading, setSkillGapsLoading] = useState(true);
@@ -197,6 +220,86 @@ export default function DashboardPage({ token }: DashboardPageProps) {
       cancelled = true;
     };
   }, [token]);
+
+  // Load ML prediction accuracy statistics.
+useEffect(() => {
+  let cancelled = false;
+
+  async function loadMLAccuracy() {
+    setMLAccuracyLoading(true);
+    setMLAccuracyError("");
+
+    try {
+      const result = await getMLPredictionAccuracy(token);
+
+      if (!cancelled) {
+        setMLAccuracy(result);
+      }
+    } catch (err: unknown) {
+      if (!cancelled) {
+        setMLAccuracyError(
+          err instanceof Error
+            ? err.message
+            : "Unable to load ML prediction accuracy."
+        );
+      }
+    } finally {
+      if (!cancelled) {
+        setMLAccuracyLoading(false);
+      }
+    }
+  }
+
+  if (token) {
+    void loadMLAccuracy();
+  } else {
+    setMLAccuracyLoading(false);
+  }
+
+  return () => {
+    cancelled = true;
+  };
+}, [token]);
+
+// Load ML model training and validation metrics.
+useEffect(() => {
+  let cancelled = false;
+
+  async function loadModelMetrics() {
+    setModelMetricsLoading(true);
+    setModelMetricsError("");
+
+    try {
+      const result = await getMLModelInfo(token);
+
+      if (!cancelled) {
+        setModelMetrics(result);
+      }
+    } catch (err: unknown) {
+      if (!cancelled) {
+        setModelMetricsError(
+          err instanceof Error
+            ? err.message
+            : "Unable to load ML model metrics."
+        );
+      }
+    } finally {
+      if (!cancelled) {
+        setModelMetricsLoading(false);
+      }
+    }
+  }
+
+  if (token) {
+    void loadModelMetrics();
+  } else {
+    setModelMetricsLoading(false);
+  }
+
+  return () => {
+    cancelled = true;
+  };
+}, [token]);
 
   // Load skill-gap recommendations.
   useEffect(() => {
@@ -648,7 +751,247 @@ const predictionNotice =
             remains the primary interview assessment.
           </p>
         </div>
+            </section>
+
+      {/* ML Model Training and Validation */}
+      <section className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5 sm:p-6">
+        <div className="mb-6">
+          <div className="flex items-center gap-3">
+            <div className="rounded-xl bg-cyan-500/10 p-3 text-cyan-300">
+              <BrainCircuit size={22} />
+            </div>
+
+            <div>
+              <h2 className="text-lg font-bold text-white">
+                Model Training & Validation
+              </h2>
+
+              <p className="mt-1 text-sm text-slate-500">
+                Training dataset and machine learning evaluation metrics.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {modelMetricsLoading ? (
+          <div className="rounded-xl border border-slate-800 p-6 text-center text-sm text-slate-400">
+            Loading model training metrics...
+          </div>
+        ) : modelMetricsError ? (
+          <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 p-4 text-sm text-rose-300">
+            {modelMetricsError}
+          </div>
+        ) : modelMetrics ? (
+          <>
+            <div className="mb-5">
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                Model name
+              </p>
+
+              <p className="mt-1 text-lg font-bold text-white">
+                {modelMetrics.model_name}
+              </p>
+
+              <p className="mt-1 text-xs text-slate-500">
+                {modelMetrics.model_type}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+              {[
+                {
+                  label: "Training Samples",
+                  value: modelMetrics.training_samples,
+                },
+                {
+                  label: "Testing Samples",
+                  value: modelMetrics.test_samples,
+                },
+                {
+                  label: "Total Samples",
+                  value: modelMetrics.total_samples,
+                },
+                {
+                  label: "MAE",
+                  value: modelMetrics.mae.toFixed(2),
+                },
+                {
+                  label: "RMSE",
+                  value: modelMetrics.rmse.toFixed(2),
+                },
+                {
+                  label: "R² Score",
+                  value: modelMetrics.r2_score.toFixed(4),
+                },
+              ].map((item) => (
+                <div
+                  key={item.label}
+                  className="rounded-xl border border-slate-800 bg-slate-950/70 p-4"
+                >
+                  <p className="text-xs text-slate-500">
+                    {item.label}
+                  </p>
+
+                  <p className="mt-2 text-2xl font-bold text-white">
+                    {item.value}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            {modelMetrics.cross_validation && (
+              <div className="mt-6">
+                <h3 className="mb-3 font-semibold text-white">
+                  Cross-Validation Results
+                </h3>
+
+                <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                  {[
+                    {
+                      label: "Validation Folds",
+                      value: modelMetrics.cross_validation.folds,
+                    },
+                    {
+                      label: "Mean MAE",
+                      value: modelMetrics.cross_validation.mean_mae.toFixed(2),
+                    },
+                    {
+                      label: "MAE Std. Deviation",
+                      value: modelMetrics.cross_validation.std_mae.toFixed(2),
+                    },
+                    {
+                      label: "Mean R²",
+                      value: modelMetrics.cross_validation.mean_r2.toFixed(4),
+                    },
+                  ].map((item) => (
+                    <div
+                      key={item.label}
+                      className="rounded-xl border border-slate-800 bg-slate-950/70 p-4"
+                    >
+                      <p className="text-xs text-slate-500">
+                        {item.label}
+                      </p>
+
+                      <p className="mt-2 text-xl font-bold text-cyan-300">
+                        {item.value}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="mt-5 space-y-2 text-sm text-slate-400">
+              <p>
+                Training data:{" "}
+                <span className="font-semibold text-slate-200">
+                  {modelMetrics.training_data}
+                </span>
+              </p>
+
+              <p>
+                Last trained:{" "}
+                <span className="text-slate-200">
+                  {formatDate(modelMetrics.trained_at)}
+                </span>
+              </p>
+            </div>
+
+            <div className="mt-5 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
+              <div className="flex items-start gap-3">
+                <CircleAlert
+                  size={18}
+                  className="mt-0.5 shrink-0 text-amber-300"
+                />
+
+                <p className="text-xs leading-6 text-amber-200">
+                  {modelMetrics.notice}
+                </p>
+              </div>
+            </div>
+          </>
+        ) : (
+          <p className="text-sm text-slate-400">
+            Model training metrics are currently unavailable.
+          </p>
+        )}
       </section>
+
+      {/* ML Prediction Accuracy */}
+      <section className="space-y-4">
+  <div>
+    <h2 className="text-xl font-semibold">
+      ML Prediction Accuracy
+    </h2>
+    <p className="text-sm text-gray-500">
+      Compares ML predictions with rubric-based interview evaluation scores.
+      This does not measure actual hiring success.
+    </p>
+  </div>
+
+  {mlAccuracyLoading ? (
+    <div className="rounded-xl border p-6 text-sm text-gray-500">
+      Loading ML prediction accuracy...
+    </div>
+  ) : mlAccuracyError ? (
+    <div className="rounded-xl border border-red-200 p-4 text-sm text-red-600">
+      {mlAccuracyError}
+    </div>
+  ) : mlAccuracy ? (
+    <>
+      {mlAccuracy.predictionCount === 0 ? (
+        <div className="rounded-xl border p-6 text-sm text-gray-500">
+          {mlAccuracy.message}
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-xl border p-5">
+              <p className="text-sm text-gray-500">
+                Average Predicted Score
+              </p>
+              <p className="mt-2 text-2xl font-bold">
+                {mlAccuracy.averagePredictedScore?.toFixed(2) ?? "—"}%
+              </p>
+            </div>
+
+            <div className="rounded-xl border p-5">
+              <p className="text-sm text-gray-500">
+                Average Actual Score
+              </p>
+              <p className="mt-2 text-2xl font-bold">
+                {mlAccuracy.averageActualScore?.toFixed(2) ?? "—"}%
+              </p>
+            </div>
+
+            <div className="rounded-xl border p-5">
+              <p className="text-sm text-gray-500">
+                Mean Absolute Error
+              </p>
+              <p className="mt-2 text-2xl font-bold">
+                {mlAccuracy.meanAbsoluteError?.toFixed(2) ?? "—"}
+              </p>
+            </div>
+
+            <div className="rounded-xl border p-5">
+              <p className="text-sm text-gray-500">
+                Score Agreement
+              </p>
+              <p className="mt-2 text-2xl font-bold">
+                {mlAccuracy.scoreAgreement?.toFixed(2) ?? "—"}%
+              </p>
+            </div>
+          </div>
+
+          <p className="text-sm text-gray-500">
+            Based on {mlAccuracy.predictionCount} completed interview
+            {mlAccuracy.predictionCount === 1 ? "" : "s"} with valid ML predictions.
+          </p>
+        </>
+      )}
+    </>
+  ) : null}
+</section>
 
       {/* Performance trend and readiness snapshot */}
       <section className="grid gap-5 xl:grid-cols-[1.6fr_1fr]">
