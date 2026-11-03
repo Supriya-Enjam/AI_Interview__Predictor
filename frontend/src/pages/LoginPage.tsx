@@ -209,7 +209,7 @@ async function handleResendOtp() {
           </p>
         </section>
 
-        <section className="mx-auto w-full max-w-md rounded-3xl border border-slate-800 bg-slate-900 p-8 shadow-2xl">
+        <section className="mx-auto w-full max-w-md rounded-3xl border border-slate-800 bg-slate-900 p-6 shadow-2xl sm:p-8">
           <div className="mb-6 md:hidden">
             <div className="flex items-center gap-2 font-bold">
               <BrainCircuit className="text-indigo-400" />
@@ -333,7 +333,7 @@ async function handleResendOtp() {
                     theme="outline"
                     size="large"
                     shape="rectangular"
-                    width="320"
+                    width="232"
                   />
                 </div>
 

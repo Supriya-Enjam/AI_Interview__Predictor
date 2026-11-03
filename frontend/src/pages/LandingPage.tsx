@@ -60,12 +60,12 @@ const steps = [
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen overflow-hidden bg-white text-slate-900">
+    <div className="min-h-screen overflow-hidden bg-[#FAF9FF] text-[#1F1633]">
       {/* Navigation */}
-      <header className="sticky top-0 z-20 border-b border-slate-200/70 bg-white/90 backdrop-blur-xl">
+      <header className="sticky top-0 z-20 border-b border-[#E9DDF7] bg-white/95 backdrop-blur-xl">
         <nav className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 lg:px-8">
           <Link to="/" className="flex items-center gap-2.5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-lg shadow-indigo-200">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white">
               <BrainCircuit size={24} />
             </div>
 
@@ -73,13 +73,13 @@ export default function LandingPage() {
               <span className="block text-lg font-extrabold tracking-tight">
                 InterviewIQ
               </span>
-              <span className="block text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+              <span className="block text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-600">
                 AI Preparation
               </span>
             </div>
           </Link>
 
-          <div className="hidden items-center gap-8 text-sm font-medium text-slate-600 md:flex">
+          <div className="hidden items-center gap-8 text-sm font-medium text-slate-700 md:flex">
             <a href="#features" className="hover:text-indigo-600">
               Features
             </a>
@@ -94,14 +94,14 @@ export default function LandingPage() {
           <div className="flex items-center gap-3">
             <Link
               to="/login"
-              className="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+              className="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-indigo-50 hover:text-indigo-800"
             >
               Log in
             </Link>
 
             <Link
               to="/register"
-              className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-200 transition hover:bg-indigo-700"
+              className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700"
             >
               Get started <ArrowRight size={16} />
             </Link>
@@ -112,19 +112,19 @@ export default function LandingPage() {
       <main>
         {/* Hero */}
         <section className="relative isolate">
-          <div className="absolute inset-0 -z-10 bg-gradient-to-br from-indigo-50 via-white to-violet-50" />
-          <div className="absolute right-0 top-10 -z-10 h-80 w-80 rounded-full bg-indigo-200/30 blur-3xl" />
+          <div className="absolute inset-0 -z-10 bg-[#F3E8FF]" />
+          <div className="absolute right-0 top-10 -z-10 h-80 w-80 rounded-full bg-indigo-100/70 blur-3xl" />
 
           <div className="mx-auto grid max-w-7xl items-center gap-14 px-5 py-20 md:py-28 lg:grid-cols-2 lg:px-8">
             <div>
-              <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-indigo-100 bg-white px-4 py-2 text-sm font-semibold text-indigo-700 shadow-sm">
+              <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-white px-4 py-2 text-sm font-semibold text-indigo-800">
                 <ShieldCheck size={16} />
                 Your next opportunity starts here
               </div>
 
               <h1 className="max-w-2xl text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
                 Turn interview practice into{" "}
-                <span className="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
+                <span className="text-indigo-700">
                   interview confidence.
                 </span>
               </h1>
@@ -138,14 +138,14 @@ export default function LandingPage() {
               <div className="mt-9 flex flex-wrap gap-4">
                 <Link
                   to="/register"
-                  className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-3.5 font-semibold text-white shadow-xl shadow-indigo-200 transition hover:-translate-y-0.5 hover:bg-indigo-700"
+                  className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-3.5 font-semibold text-white transition hover:-translate-y-0.5 hover:bg-indigo-700"
                 >
                   Start preparing <ArrowRight size={18} />
                 </Link>
 
                 <a
                   href="#how-it-works"
-                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-6 py-3.5 font-semibold text-slate-700 transition hover:border-indigo-200 hover:text-indigo-700"
+                  className="inline-flex items-center gap-2 rounded-xl border border-[#E9DDF7] bg-white px-6 py-3.5 font-semibold text-slate-700 transition hover:border-indigo-300 hover:text-indigo-700"
                 >
                   Explore features
                 </a>
@@ -165,10 +165,10 @@ export default function LandingPage() {
 
             {/* Dashboard preview */}
             <div className="relative mx-auto w-full max-w-xl">
-              <div className="absolute -inset-4 rounded-[2rem] bg-gradient-to-br from-indigo-200/60 to-violet-200/60 blur-2xl" />
+              <div className="absolute -inset-4 rounded-[2rem] bg-indigo-100/80 blur-2xl" />
 
-              <div className="relative rounded-3xl border border-white bg-white p-5 shadow-2xl shadow-indigo-200/50 sm:p-7">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-5">
+              <div className="relative rounded-3xl border border-[#E9DDF7] bg-white p-5 shadow-xl shadow-indigo-100/60 sm:p-7">
+                <div className="flex items-center justify-between border-b border-[#E9DDF7] pb-5">
                   <div>
                     <p className="text-sm font-medium text-slate-500">
                       Your practice workspace
@@ -184,7 +184,7 @@ export default function LandingPage() {
                 </div>
 
                 <div className="mt-6 grid grid-cols-2 gap-4">
-                  <div className="rounded-2xl bg-slate-50 p-4">
+                  <div className="rounded-2xl bg-[#FAF9FF] p-4">
                     <div className="flex items-center gap-2 text-sm text-slate-500">
                       <MessageSquareText size={17} />
                       Practice sessions
@@ -209,7 +209,7 @@ export default function LandingPage() {
                   </div>
                 </div>
 
-                <div className="mt-5 rounded-2xl border border-slate-100 p-5">
+                <div className="mt-5 rounded-2xl border border-[#E9DDF7] p-5">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-semibold">
@@ -231,15 +231,15 @@ export default function LandingPage() {
                   </p>
                 </div>
 
-                <div className="mt-5 flex items-center gap-3 rounded-2xl bg-emerald-50 p-4">
+                <div className="mt-5 flex items-center gap-3 rounded-2xl bg-[#F3E8FF] p-4">
                   <div className="rounded-xl bg-white p-2 text-emerald-600">
                     <BrainCircuit size={22} />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-emerald-900">
+                  <p className="text-sm font-semibold text-[#4C1D95]">
                       Feedback that helps you improve
                     </p>
-                    <p className="mt-1 text-xs text-emerald-800">
+                  <p className="mt-1 text-xs text-slate-700">
                       Discover strengths and areas to work on.
                     </p>
                   </div>
@@ -271,7 +271,7 @@ export default function LandingPage() {
             {features.map(({ icon: Icon, title, description }) => (
               <article
                 key={title}
-                className="rounded-2xl border border-slate-200 bg-white p-6 transition hover:-translate-y-1 hover:border-indigo-200 hover:shadow-xl hover:shadow-indigo-100/60"
+                className="rounded-2xl border border-[#E9DDF7] bg-white p-6 transition hover:-translate-y-1 hover:border-indigo-300 hover:shadow-lg hover:shadow-indigo-100/60"
               >
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
                   <Icon size={24} />
@@ -286,7 +286,7 @@ export default function LandingPage() {
         </section>
 
         {/* How it works */}
-        <section id="how-it-works" className="bg-slate-50 py-20">
+        <section id="how-it-works" className="bg-[#F3E8FF] py-20">
           <div className="mx-auto max-w-7xl px-5 lg:px-8">
             <div className="text-center">
               <p className="text-sm font-bold uppercase tracking-[0.2em] text-indigo-600">
@@ -301,7 +301,7 @@ export default function LandingPage() {
               {steps.map((step) => (
                 <article
                   key={step.number}
-                  className="rounded-2xl border border-slate-200 bg-white p-7"
+                  className="rounded-2xl border border-[#E9DDF7] bg-white p-7"
                 >
                   <span className="text-sm font-extrabold tracking-widest text-indigo-600">
                     STEP {step.number}
@@ -321,22 +321,22 @@ export default function LandingPage() {
           id="benefits"
           className="mx-auto max-w-7xl px-5 py-20 lg:px-8"
         >
-          <div className="grid items-center gap-10 rounded-3xl bg-slate-950 p-8 text-white sm:p-12 lg:grid-cols-2 lg:p-16">
+          <div className="grid items-center gap-10 rounded-3xl border border-[#E9DDF7] bg-white p-8 text-[#1F1633] sm:p-12 lg:grid-cols-2 lg:p-16">
             <div>
-              <p className="text-sm font-bold uppercase tracking-[0.2em] text-indigo-300">
+              <p className="text-sm font-bold uppercase tracking-[0.2em] text-indigo-700">
                 Your preparation, your progress
               </p>
               <h2 className="mt-4 text-3xl font-extrabold leading-tight sm:text-4xl">
                 Make every practice session count.
               </h2>
-              <p className="mt-5 leading-7 text-slate-300">
+              <p className="mt-5 leading-7 text-slate-700">
                 Understand your performance, identify improvement areas, and
                 build a more focused interview preparation routine.
               </p>
 
               <Link
                 to="/register"
-                className="mt-7 inline-flex items-center gap-2 rounded-xl bg-indigo-500 px-5 py-3 font-semibold text-white transition hover:bg-indigo-400"
+                className="mt-7 inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 font-semibold text-white transition hover:bg-indigo-700"
               >
                 Get started <ArrowRight size={18} />
               </Link>
@@ -351,11 +351,11 @@ export default function LandingPage() {
               ].map((item) => (
                 <div
                   key={item}
-                  className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-4"
+                  className="flex items-center gap-3 rounded-xl border border-[#E9DDF7] bg-[#FAF9FF] p-4"
                 >
                   <CheckCircle2
                     size={20}
-                    className="shrink-0 text-indigo-300"
+                    className="shrink-0 text-indigo-700"
                   />
                   <span className="text-sm font-medium">{item}</span>
                 </div>
@@ -366,9 +366,9 @@ export default function LandingPage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-slate-200">
-        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-5 py-8 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between lg:px-8">
-          <p className="font-semibold text-slate-700">
+      <footer className="border-t border-[#E9DDF7] bg-white">
+        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-5 py-8 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between lg:px-8">
+          <p className="font-semibold text-slate-800">
             InterviewIQ · AI Interview Performance Predictor
           </p>
           <p>Practice with purpose. Prepare with confidence.</p>
