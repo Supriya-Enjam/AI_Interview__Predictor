@@ -1,15 +1,12 @@
-import { Router, type Request, type Response, type NextFunction } from "express";
+import { Router, type Request, type Response } from "express";
 import mongoose from "mongoose";
-import jwt from "jsonwebtoken";
 import { z } from "zod";
 
 import { predictInterviewPerformance } from "../services/mlPredictionService";
 
 import { Interview } from "../models/Interview";
 import { User } from "../models/User";
-
-
-
+import { authenticate } from "../middleware/authenticate";
 import { evaluateCompletedInterview } from "../services/interviewEvaluationService";
 import { estimateInterviewReadiness } from "../services/interviewReadinessService";
 import { summarizeSkillGaps } from "../services/skillGapService";
@@ -69,60 +66,6 @@ const questionBankPreviewSchema = z.object({
   targetRole: z.string().trim().min(2).max(100).optional(),
 });
 
-// =========================================================
-// AUTHENTICATION MIDDLEWARE
-// =========================================================
-
-function authenticateRequest(
-  req: AuthenticatedRequest,
-  res: Response,
-  next: NextFunction
-): void {
-  const authorization = req.headers.authorization;
-
-  if (!authorization?.startsWith("Bearer ")) {
-    res.status(401).json({
-      success: false,
-      message: "Authentication required. Please sign in.",
-    });
-    return;
-  }
-
-  const token = authorization.slice(7).trim();
-  const secret = process.env.JWT_SECRET;
-
-  if (!secret || !token) {
-    res.status(401).json({
-      success: false,
-      message: "Invalid authentication configuration or token.",
-    });
-    return;
-  }
-
-  try {
-    const decoded = jwt.verify(token, secret);
-
-    if (
-      typeof decoded === "string" ||
-      typeof decoded.sub !== "string" ||
-      !mongoose.isValidObjectId(decoded.sub)
-    ) {
-      res.status(401).json({
-        success: false,
-        message: "Invalid authentication token.",
-      });
-      return;
-    }
-
-    req.userId = decoded.sub;
-    next();
-  } catch {
-    res.status(401).json({
-      success: false,
-      message: "Your session is invalid or expired. Please sign in again.",
-    });
-  }
-}
 
 // =========================================================
 // HELPERS
@@ -219,7 +162,7 @@ async function tryEvaluateInterview(
 
 router.post(
   "/",
-  authenticateRequest,
+  authenticate,
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const validation = createInterviewSchema.safeParse(req.body);
@@ -352,7 +295,7 @@ router.post(
 
 router.get(
   "/question-bank",
-  authenticateRequest,
+  authenticate,
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const query = questionBankPreviewSchema.safeParse(req.query);
@@ -414,7 +357,7 @@ router.get(
 
 router.post(
   "/:id/answers",
-  authenticateRequest,
+  authenticate,
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const interviewId = req.params.id;
@@ -511,7 +454,7 @@ router.post(
 
 router.get(
   "/history",
-  authenticateRequest,
+  authenticate,
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const interviews = await Interview.find({
@@ -559,7 +502,7 @@ router.get(
 // GET ML MODEL TRAINING INFORMATION
 router.get(
   "/ml-model-info",
-  authenticateRequest,
+  authenticate,
   async (_req: AuthenticatedRequest, res: Response) => {
     try {
       const mlServiceUrl =
@@ -599,7 +542,7 @@ router.get(
 
 router.get(
   "/ml-accuracy",
-  authenticateRequest,
+  authenticate,
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const interviews = await Interview.find({
@@ -710,7 +653,7 @@ router.get(
 
 router.get(
   "/readiness",
-  authenticateRequest,
+  authenticate,
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const interviews = await Interview.find({
@@ -758,7 +701,7 @@ router.get(
 
 router.get(
   "/skill-gaps",
-  authenticateRequest,
+  authenticate,
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       // 1. Get the candidate's current target role.
@@ -910,7 +853,7 @@ router.get(
 
 router.get(
   "/adaptive-difficulty",
-  authenticateRequest,
+  authenticate,
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       if (!req.userId) {
@@ -949,7 +892,7 @@ router.get(
 
 router.get(
   "/:id",
-  authenticateRequest,
+  authenticate,
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const interviewId = req.params.id;
@@ -1019,7 +962,7 @@ router.get(
 
 router.post(
   "/:id/complete",
-  authenticateRequest,
+  authenticate,
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const interviewId = req.params.id;
@@ -1129,7 +1072,7 @@ if (answeredQuestions === 0) {
 
 router.post(
   "/:id/evaluate",
-  authenticateRequest,
+  authenticate,
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const interviewId = req.params.id;

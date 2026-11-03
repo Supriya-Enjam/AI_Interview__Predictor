@@ -494,7 +494,7 @@ router.patch(
         id,
         parsed.data,
         {
-          new: true,
+          returnDocument: "after",
           runValidators: true,
         }
       );
@@ -1323,7 +1323,7 @@ router.patch(
         id,
         { status: parsed.data.status },
         {
-          new: true,
+          returnDocument: "after",
           runValidators: true,
         }
       ).select("-filePath -storedFileName");

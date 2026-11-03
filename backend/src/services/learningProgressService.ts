@@ -22,7 +22,7 @@ export async function addTask(
       $setOnInsert: { userId },
     },
     {
-      new: true,
+      returnDocument: "after",
       upsert: true,
       setDefaultsOnInsert: true,
       runValidators: true,
@@ -113,7 +113,7 @@ export async function updateTask(
       $set: updateFields,
     },
     {
-      new: true,
+      returnDocument: "after",
       runValidators: true,
     }
   ).lean();
@@ -161,7 +161,7 @@ export async function setCompletedTopics(
       $setOnInsert: { userId },
     },
     {
-      new: true,
+      returnDocument: "after",
       upsert: true,
       runValidators: true,
       setDefaultsOnInsert: true,

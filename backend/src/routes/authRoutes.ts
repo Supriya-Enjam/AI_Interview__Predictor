@@ -818,7 +818,7 @@ router.post(
             expiresAt: new Date(now.getTime() + 17 * 60 * 1000),
           },
         },
-        { new: true }
+        { returnDocument: "after" }
       );
 
       if (!updatedSession) {
@@ -987,7 +987,7 @@ router.patch(
           targetRole: parsed.data.targetRole,
         },
         {
-          new: true,
+          returnDocument: "after",
           runValidators: true,
         }
       );

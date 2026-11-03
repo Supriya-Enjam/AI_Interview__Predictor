@@ -223,7 +223,7 @@ router.put(
           $setOnInsert: { userId: req.userId },
         },
         {
-          new: true,
+          returnDocument: "after",
           upsert: true,
           runValidators: true,
           setDefaultsOnInsert: true,

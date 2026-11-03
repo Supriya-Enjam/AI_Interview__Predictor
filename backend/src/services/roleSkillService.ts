@@ -12,6 +12,48 @@ export interface RoleSkill {
 }
 
 /**
+ * Retries Gemini requests when temporary server or rate-limit errors occur.
+ */
+async function retryGeminiRequest<T>(
+  operation: () => Promise<T>,
+  maxAttempts = 3
+): Promise<T> {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await operation();
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : String(error);
+
+      const status =
+        typeof error === "object" && error !== null && "status" in error
+          ? Number((error as { status?: unknown }).status)
+          : 0;
+
+      const isTemporaryError =
+        [429, 500, 502, 503, 504].includes(status) ||
+        /429|500|502|503|504|UNAVAILABLE|high demand|overloaded/i.test(
+          message
+        );
+
+      if (!isTemporaryError || attempt === maxAttempts) {
+        throw error;
+      }
+
+      const delay = 1000 * Math.pow(2, attempt - 1);
+
+      console.warn(
+        `Gemini skill generation failed. Retrying in ${delay}ms (attempt ${attempt + 1}/${maxAttempts}).`
+      );
+
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+
+  throw new Error("Gemini skill generation failed after all retries.");
+}
+
+/**
  * Generates role-specific skills and learning topics dynamically
  * using the Gemini API.
  */
@@ -77,13 +119,15 @@ Allowed importance values:
 High, Medium, Low
 `;
 
-  const response = await ai.models.generateContent({
-    model: "gemini-3.8-flash",
-    contents: prompt,
-    config: {
-      responseMimeType: "application/json",
-    },
-  });
+  const response = await retryGeminiRequest(() =>
+    ai.models.generateContent({
+      model: "gemini-3.8-flash",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+      },
+    })
+  );
 
   const responseText = response.text;
 

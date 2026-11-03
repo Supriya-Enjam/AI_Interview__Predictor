@@ -74,7 +74,7 @@ export async function authenticate(
         },
       },
       {
-        new: true,
+        returnDocument: "after",
       }
     );
 
