@@ -292,20 +292,22 @@ export default function DashboardPage({ token }: DashboardPageProps) {
   );
 
   // Average ML predicted score.
-  const averageMLScore = useMemo(() => {
-    if (!mlPredictedInterviews.length) {
-      return null;
-    }
+  // Average ML prediction from backend readiness.
+const averageMLScore =
+  typeof readiness?.averagePredictedScore === "number"
+    ? readiness.averagePredictedScore
+    : null;
 
-    return (
-      mlPredictedInterviews.reduce(
-        (sum, item) =>
-          sum + (item.evaluation?.mlPrediction?.predictedScore ?? 0),
-        0
-      ) / mlPredictedInterviews.length
-    );
-  }, [mlPredictedInterviews]);
+// Backend prediction statistics.
+const predictionCount =
+  readiness?.predictionCount ?? mlPredictedInterviews.length;
 
+const predictionLabel =
+  readiness?.predictionLabel ?? "No prediction available";
+
+const predictionNotice =
+  readiness?.predictionNotice ??
+  "ML predictions are experimental estimates, not guarantees of hiring outcomes.";
   // Latest ML prediction.
   const latestMLInterview =
     mlPredictedInterviews[mlPredictedInterviews.length - 1] ?? null;
@@ -575,26 +577,26 @@ export default function DashboardPage({ token }: DashboardPageProps) {
                 ? "—"
                 : `${averageMLScore.toFixed(1)}%`
             }
-            detail={
-              mlPredictedInterviews.length
-                ? `Across ${mlPredictedInterviews.length} ML predictions`
-                : "No ML predictions available yet"
-            }
+           detail={
+  predictionCount > 0
+    ? `Across ${predictionCount} ML predictions`
+    : "No ML predictions available yet"
+}
             icon={<BrainCircuit size={20} />}
             iconStyle="bg-violet-500/10 text-violet-300"
           />
 
           <StatCard
-            title="Total ML predictions"
-            value={
-              historyLoading
-                ? "…"
-                : String(mlPredictedInterviews.length)
-            }
-            detail="Completed interviews with an ML estimate"
-            icon={<BarChart3 size={20} />}
-            iconStyle="bg-indigo-500/10 text-indigo-300"
-          />
+  title="Total ML predictions"
+  value={
+    historyLoading || readinessLoading
+      ? "…"
+      : String(predictionCount)
+  }
+  detail="Completed interviews with an ML estimate"
+  icon={<BarChart3 size={20} />}
+  iconStyle="bg-indigo-500/10 text-indigo-300"
+/>
 
           <StatCard
             title="Latest ML prediction"
@@ -614,9 +616,23 @@ export default function DashboardPage({ token }: DashboardPageProps) {
             icon={<TrendingUp size={20} />}
             iconStyle="bg-emerald-500/10 text-emerald-300"
           />
-        </div>
+       </div>
 
-        <div className="mt-4 flex items-start gap-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
+<div className="mt-4 rounded-xl border border-violet-500/20 bg-violet-500/5 p-4">
+  <p className="text-xs font-semibold uppercase tracking-wider text-violet-300">
+    ML prediction assessment
+  </p>
+
+  <p className="mt-2 text-lg font-bold text-white">
+    {readinessLoading ? "Loading prediction..." : predictionLabel}
+  </p>
+
+  <p className="mt-1 text-sm leading-6 text-slate-400">
+    {predictionNotice}
+  </p>
+</div>
+
+<div className="mt-4 flex items-start gap-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
           <CircleAlert
             size={18}
             className="mt-0.5 shrink-0 text-amber-300"

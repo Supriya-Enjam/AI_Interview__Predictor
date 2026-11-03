@@ -364,6 +364,7 @@ export interface InterviewHistoryItem {
 // =========================================================
 
 export interface InterviewReadinessSummary {
+  // Actual rubric-based readiness
   score: number;
   label: string;
   summary: string;
@@ -373,6 +374,12 @@ export interface InterviewReadinessSummary {
   strongestSkills: string[];
   improvementAreas: string[];
   method: string;
+
+  // Experimental ML prediction
+  averagePredictedScore: number | null;
+  predictionLabel: string;
+  predictionCount: number;
+  predictionNotice: string;
 }
 
 // =========================================================
