@@ -509,17 +509,17 @@ const predictionNotice =
 
         <div className="relative flex flex-col justify-between gap-7 lg:flex-row lg:items-center">
           <div className="max-w-2xl">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-indigo-400/20 bg-indigo-400/10 px-3 py-1.5 text-xs font-semibold text-indigo-200">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-indigo-400/20 bg-indigo-400/10 px-3 py-1.5 text-xs font-semibold text-white">
               <Sparkles size={14} />
               YOUR AI PRACTICE WORKSPACE
             </div>
 
             <h1 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
               Welcome back, {firstName}
-              <span className="text-indigo-300">!</span>
+              <span className="text-white">!</span>
             </h1>
 
-            <p className="mt-4 max-w-xl text-sm leading-7 text-slate-300 sm:text-base">
+            <p className="mt-4 max-w-xl text-sm leading-7 text-white sm:text-base">
               Build confidence, sharpen your answers, and prepare
               for your next opportunity with structured interview
               practice and performance feedback.
@@ -1129,7 +1129,7 @@ const predictionNotice =
             <div
               className="relative flex h-28 w-28 shrink-0 items-center justify-center rounded-full"
               style={{
-                background: `conic-gradient(#818cf8 ${readinessScore}%, #1e293b ${readinessScore}% 100%)`,
+                background: `conic-gradient(var(--primary-blue) ${readinessScore}%, var(--app-border) ${readinessScore}% 100%)`,
               }}
               role="img"
               aria-label={`Readiness estimate ${readinessScore} percent`}

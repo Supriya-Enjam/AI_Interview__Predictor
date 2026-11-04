@@ -710,7 +710,7 @@ export default function AnalyticsPage({ token }: AnalyticsPageProps) {
                     y1={chartBottom}
                     x2={chartRight}
                     y2={chartBottom}
-                    stroke="#334155"
+                    stroke="var(--app-border)"
                   />
 
                   <line
@@ -718,7 +718,7 @@ export default function AnalyticsPage({ token }: AnalyticsPageProps) {
                     y1={chartTop}
                     x2={chartLeft}
                     y2={chartBottom}
-                    stroke="#334155"
+                    stroke="var(--app-border)"
                   />
 
                   {[0, 25, 50, 75, 100].map((tick) => {
@@ -731,13 +731,13 @@ export default function AnalyticsPage({ token }: AnalyticsPageProps) {
                           y1={y}
                           x2={chartRight}
                           y2={y}
-                          stroke="#1e293b"
+                          stroke="var(--app-border)"
                         />
 
                         <text
                           x="8"
                           y={y + 4}
-                          fill="#94a3b8"
+                          fill="var(--app-text-muted)"
                           fontSize="10"
                         >
                           {tick}%
@@ -749,7 +749,7 @@ export default function AnalyticsPage({ token }: AnalyticsPageProps) {
                   {trendData.length > 1 && (
                     <polyline
                       fill="none"
-                      stroke="#818cf8"
+                      stroke="var(--primary-blue)"
                       strokeWidth="3"
                       strokeLinejoin="round"
                       strokeLinecap="round"
@@ -767,14 +767,14 @@ export default function AnalyticsPage({ token }: AnalyticsPageProps) {
                           cx={x}
                           cy={y}
                           r="4"
-                          fill="#a5b4fc"
+                          fill="var(--accent-teal)"
                         />
 
                         <text
                           x={x}
                           y="175"
                           textAnchor="middle"
-                          fill="#94a3b8"
+                          fill="var(--app-text-muted)"
                           fontSize="10"
                         >
                           {point.label}

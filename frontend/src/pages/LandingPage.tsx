@@ -82,7 +82,7 @@ export default function LandingPage() {
               <span className="block text-lg font-extrabold tracking-tight">
                 InterviewIQ
               </span>
-              <span className="block text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-600">
+              <span className="hidden text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-600 min-[375px]:block">
                 AI Preparation
               </span>
             </div>
@@ -100,17 +100,17 @@ export default function LandingPage() {
             </a>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 sm:gap-3">
             <Link
               to="/login"
-              className="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-indigo-50 hover:text-indigo-800"
+              className="rounded-xl px-2 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-indigo-50 hover:text-indigo-800 sm:px-4"
             >
               Log in
             </Link>
 
             <Link
               to="/register"
-              className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700"
+              className="flex items-center gap-1 rounded-xl bg-indigo-600 px-2.5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 sm:gap-2 sm:px-4"
             >
               Get started <ArrowRight size={16} />
             </Link>

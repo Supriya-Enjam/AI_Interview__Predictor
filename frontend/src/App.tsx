@@ -1,5 +1,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Sun, Moon } from "lucide-react";
 import {
   BrowserRouter,
   Navigate,
@@ -85,6 +86,36 @@ function ProtectedLayout({
 
 function AppRoutes() {
   const navigate = useNavigate();
+
+  // Global theme state
+  const [theme, setTheme] = useState<"light" | "dark">(() => {
+    try {
+      const savedTheme = localStorage.getItem("interviewiq_theme");
+      return savedTheme === "dark" ? "dark" : "light";
+    } catch {
+      return "light";
+    }
+  });
+
+  // Apply theme across the entire website
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", theme === "dark");
+    document.body.classList.toggle("dark", theme === "dark");
+
+    document.documentElement.style.colorScheme = theme;
+
+    try {
+      localStorage.setItem("interviewiq_theme", theme);
+    } catch (error) {
+      console.error("Could not save theme preference:", error);
+    }
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((previous) =>
+      previous === "light" ? "dark" : "light"
+    );
+  };
 
   const [showSessionWarning, setShowSessionWarning] = useState(false);
 const [remainingSeconds, setRemainingSeconds] = useState(
@@ -479,6 +510,21 @@ useEffect(() => {
 
       {/* Global Cookie Consent Banner */}
       <CookieConsent />
+
+      {/* Global Light / Dark Theme Toggle */}
+<button
+  type="button"
+  onClick={toggleTheme}
+  aria-label={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
+  title={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
+  className="fixed bottom-6 right-6 z-[180] flex h-12 w-12 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-800 shadow-xl transition-all duration-300 hover:scale-110 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-yellow-300 dark:hover:bg-slate-700"
+>
+  {theme === "light" ? (
+    <Moon size={22} />
+  ) : (
+    <Sun size={22} />
+  )}
+</button>
 
       {/* Session expiration warning popup */}
       {session && showSessionWarning && (

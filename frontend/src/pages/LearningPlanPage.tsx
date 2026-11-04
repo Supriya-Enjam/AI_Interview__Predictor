@@ -791,7 +791,7 @@ useEffect(() => {
             <Target size={25} />
           </div>
 
-          <p className="text-sm font-semibold uppercase tracking-widest text-indigo-200">
+          <p className="text-sm font-semibold uppercase tracking-widest text-white">
             Your personal growth journey
           </p>
 
@@ -804,7 +804,7 @@ useEffect(() => {
   Target Role: {targetRole}
 </div>
 
-<p className="mt-4 max-w-xl leading-7 text-indigo-100">
+<p className="mt-4 max-w-xl leading-7 text-white">
   Build your interview skills through focused learning,
   consistent practice, and measurable progress.
 </p>

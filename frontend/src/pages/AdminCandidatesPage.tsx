@@ -155,13 +155,13 @@ const AdminCandidatesPage: React.FC<AdminCandidatesPageProps> = ({
               Candidate Directory
             </h2>
 
-            <p className="mt-2 max-w-2xl text-sm text-indigo-100">
+            <p className="mt-2 max-w-2xl text-sm text-white">
               Review candidate registrations, target job roles, interview
               participation and recent assessment results.
             </p>
           </div>
 
-          <Users className="h-14 w-14 text-indigo-200 opacity-80" />
+          <Users className="h-14 w-14 text-white opacity-80" />
         </div>
       </div>
 

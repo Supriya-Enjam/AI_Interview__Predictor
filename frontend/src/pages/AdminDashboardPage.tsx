@@ -216,13 +216,13 @@ const loadMLModel = async () => {
             <h2 className="text-xl font-bold">
               Welcome to InterviewIQ Administration
             </h2>
-            <p className="mt-2 max-w-2xl text-sm text-indigo-100">
+            <p className="mt-2 max-w-2xl text-sm text-white">
               Manage candidates, interview questions, datasets and evaluation
               performance from one central workspace.
             </p>
           </div>
 
-          <BrainCircuit className="h-14 w-14 text-indigo-200 opacity-80" />
+          <BrainCircuit className="h-14 w-14 text-white opacity-80" />
         </div>
       </div>
 
