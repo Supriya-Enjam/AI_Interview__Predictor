@@ -339,13 +339,13 @@ const loadMLModel = async () => {
             </div>
 
             <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-500 dark:text-slate-400">
-                Trained ML model
-              </span>
-              <span className="text-sm font-semibold text-amber-600">
-                {data.system.trainedMachineLearningModel ? "Yes" : "No"}
-              </span>
-            </div>
+  <span className="text-sm text-slate-500 dark:text-slate-400">
+    Rubric evaluator uses ML
+  </span>
+  <span className="text-sm font-semibold text-amber-600">
+    {data.system.trainedMachineLearningModel ? "Yes" : "No"}
+  </span>
+</div>
           </div>
         </div>
       </section>

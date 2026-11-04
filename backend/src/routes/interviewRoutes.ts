@@ -115,12 +115,12 @@ async function tryEvaluateInterview(
       };
 
       const features = {
-        completeness_score: averageRubricScore("completeness", 4),
-        structure_score: averageRubricScore("structure", 3),
-        specificity_score: averageRubricScore("specificity", 3),
-        relevance_score: averageRubricScore("relevance", 5),
-        communication_score: averageRubricScore("communication", 5),
-      };
+  completeness_score: averageRubricScore("completeness", 5),
+  structure_score: averageRubricScore("structure", 5),
+  specificity_score: averageRubricScore("specificity", 5),
+  relevance_score: averageRubricScore("relevance", 5),
+  communication_score: averageRubricScore("communication", 5),
+};
 
       // Step 3: Request an experimental ML prediction.
       try {

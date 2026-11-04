@@ -105,7 +105,7 @@ def main():
     model.fit(X_train, y_train)
 
     predictions = model.predict(X_test)
-    predictions = predictions.clip(0, 20)
+    predictions = predictions.clip(0, 25)
 
     mae = mean_absolute_error(y_test, predictions)
     rmse = mean_squared_error(y_test, predictions) ** 0.5
@@ -122,7 +122,7 @@ def main():
             if len(y_test) >= 2
             else None
         ),
-        "scoreRange": [0, 20],
+        "scoreRange": [0, 25],
         "warning": (
             "Exploratory metrics only. Validate on a larger, "
             "independent human-reviewed dataset before production use."

@@ -317,10 +317,13 @@ useEffect(() => {
         path="/login"
         element={
           session ? (
-            <Navigate to="/dashboard" replace />
-          ) : (
-            <LoginPage onLoginSuccess={handleAuthSuccess} />
-          )
+  <Navigate
+    to={session.user.role === "admin" ? "/admin/dashboard" : "/dashboard"}
+    replace
+  />
+) : (
+  <LoginPage onLoginSuccess={handleAuthSuccess} />
+)
         }
       />
 
@@ -328,7 +331,10 @@ useEffect(() => {
         path="/register"
         element={
           session ? (
-            <Navigate to="/dashboard" replace />
+            <Navigate
+  to={session.user.role === "admin" ? "/admin/dashboard" : "/dashboard"}
+  replace
+/>
           ) : (
             <RegisterPage onRegisterSuccess={handleAuthSuccess} />
           )
@@ -339,7 +345,10 @@ useEffect(() => {
         path="/forgot-password"
         element={
           session ? (
-            <Navigate to="/dashboard" replace />
+            <Navigate
+  to={session.user.role === "admin" ? "/admin/dashboard" : "/dashboard"}
+  replace
+/>
           ) : (
             <ForgotPasswordPage />
           )
@@ -380,10 +389,16 @@ useEffect(() => {
     )
   }
 />
-        <Route
-          path="/dashboard"
-          element={<DashboardPage token={session?.token ?? ""} />}
-        />
+       <Route
+  path="/dashboard"
+  element={
+    session?.user.role === "admin" ? (
+      <Navigate to="/admin/dashboard" replace />
+    ) : (
+      <DashboardPage token={session?.token ?? ""} />
+    )
+  }
+/>
 
         <Route
           path="/profile"

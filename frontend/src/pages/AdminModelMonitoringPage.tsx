@@ -272,11 +272,11 @@ export const AdminModelMonitoringPage: React.FC<
               </span>
 
               <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-700 dark:bg-amber-950 dark:text-amber-300">
-                Trained ML model:{" "}
-                {monitoring.system.trainedMachineLearningModel
-                  ? "Yes"
-                  : "No"}
-              </span>
+  Rubric evaluator uses ML:{" "}
+  {monitoring.system.trainedMachineLearningModel
+    ? "Yes"
+    : "No"}
+</span>
             </div>
           </div>
         </div>

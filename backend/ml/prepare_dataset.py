@@ -31,12 +31,12 @@ REQUIRED_COLUMNS = [
 ]
 
 SCORE_LIMITS = {
-    "completenessScore": (0, 4),
-    "structureScore": (0, 3),
-    "specificityScore": (0, 3),
+    "completenessScore": (0, 5),
+    "structureScore": (0, 5),
+    "specificityScore": (0, 5),
     "relevanceScore": (0, 5),
     "communicationScore": (0, 5),
-    "overallScore": (0, 20),
+    "overallScore": (0, 25),
 }
 
 VALID_CATEGORIES = {
