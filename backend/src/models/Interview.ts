@@ -155,44 +155,44 @@ const QuestionEvaluationSchema = new Schema<QuestionEvaluation>(
       min: 1,
     },
 
-    rubric: {
-  completeness: {
-    type: Number,
-    required: true,
-    min: 0,
-    max: 4,
-  },
-  structure: {
-    type: Number,
-    required: true,
-    min: 0,
-    max: 3,
-  },
-  specificity: {
-    type: Number,
-    required: true,
-    min: 0,
-    max: 3,
-  },
-  relevance: {
-    type: Number,
-    required: true,
-    min: 0,
-    max: 5,
-  },
-  communication: {
-    type: Number,
-    required: true,
-    min: 0,
-    max: 5,
-  },
-  total: {
-    type: Number,
-    required: true,
-    min: 0,
-    max: 20,
-  },
-},
+        rubric: {
+      completeness: {
+        type: Number,
+        required: true,
+        min: 0,
+        max: 5,
+      },
+      structure: {
+        type: Number,
+        required: true,
+        min: 0,
+        max: 5,
+      },
+      specificity: {
+        type: Number,
+        required: true,
+        min: 0,
+        max: 5,
+      },
+      relevance: {
+        type: Number,
+        required: true,
+        min: 0,
+        max: 5,
+      },
+      communication: {
+        type: Number,
+        required: true,
+        min: 0,
+        max: 5,
+      },
+      total: {
+        type: Number,
+        required: true,
+        min: 0,
+        max: 25,
+      },
+    },
     feedback: {
       type: String,
       required: true,

@@ -156,28 +156,36 @@ function calculateRubric(
   const words = countWords(answer);
   const sentences = countSentences(answer);
 
-  // 1. Completeness
+  // 1. Completeness (maximum 5)
   let completeness = 0;
 
   if (words >= 10) completeness = 1;
   if (words >= 25) completeness = 2;
   if (words >= 50) completeness = 3;
   if (words >= 80) completeness = 4;
+  if (words >= 120) completeness = 5;
 
-  // 2. Structure
+  // 2. Structure (maximum 5)
   let structure = 0;
 
-  if (sentences >= 2) structure = 1;
-  if (sentences >= 3) structure = 2;
+  if (sentences >= 1) structure = 1;
+  if (sentences >= 2) structure = 2;
+  if (sentences >= 3) structure = 3;
 
   const transitions =
     /\b(because|therefore|however|first|second|finally|for example|as a result|in conclusion|specifically|consequently)\b/i;
 
   if (sentences >= 2 && transitions.test(normalized)) {
-    structure = 3;
+    structure += 1;
   }
 
-  // 3. Specificity
+  if (sentences >= 4) {
+    structure += 1;
+  }
+
+  structure = Math.min(5, structure);
+
+  // 3. Specificity (maximum 5)
   const evidence =
     /\b(for example|for instance|such as|specifically|measured|increased|decreased|reduced|improved|implemented|developed|designed|achieved|resulted|percent|percentage|project|customer|team|database|application|system)\b/i;
 
@@ -189,21 +197,29 @@ function calculateRubric(
     specificity = 2;
   }
 
+  if (words >= 50 && evidence.test(normalized)) {
+    specificity = 3;
+  }
+
   const hasConcreteEvidence =
     /\b\d+(?:\.\d+)?%?\b/.test(normalized) ||
     /\b(for example|for instance|such as)\b/i.test(normalized);
 
-  if (
-    words >= 50 &&
-    evidence.test(normalized) &&
-    hasConcreteEvidence
-  ) {
-    specificity = 3;
+  if (specificity >= 3 && hasConcreteEvidence) {
+    specificity += 1;
   }
 
-  // 4. Relevance
-  const questionKeywords = extractKeywords(question);
+  const hasActionAndOutcome =
+    /\b(implemented|developed|designed|created|improved|reduced|increased|achieved|resulted)\b/i.test(normalized);
 
+  if (specificity >= 3 && hasActionAndOutcome) {
+    specificity += 1;
+  }
+
+  specificity = Math.min(5, specificity);
+
+  // 4. Relevance (maximum 5)
+  const questionKeywords = extractKeywords(question);
   const answerKeywordSet = new Set(extractKeywords(answer));
 
   const matchedQuestionKeywords = questionKeywords.filter(
@@ -221,7 +237,7 @@ function calculateRubric(
     relevance = words >= 10 ? 3 : 1;
   }
 
-  // 5. Communication
+  // 5. Communication (maximum 5)
   let communication = 0;
 
   const averageSentenceLength =
@@ -373,25 +389,24 @@ function evaluateAnswer(
     );
   }
 
-  const feedback =
-  rubric.total >= 16
-    ? "Strong preliminary response across completeness, relevance, structure, specificity, and communication indicators. Technical accuracy still requires separate verification."
-    : rubric.total >= 12
-      ? "The response demonstrates some useful development. Improve weaker areas with clearer explanations and relevant examples."
-      : "The response needs further development. Focus on answering the question directly and supporting your points with relevant details.";
-
- return {
-  questionId,
-  score: rubric.total,
-  maxScore: 20,
-  rubric: {
-    completeness: rubric.completeness,
-    structure: rubric.structure,
-    specificity: rubric.specificity,
-    relevance: rubric.relevance,
-    communication: rubric.communication,
-    total: rubric.total,
-  },
+   const feedback =
+    rubric.total >= 20
+      ? "Strong preliminary response across completeness, relevance, structure, specificity, and communication indicators. Technical accuracy still requires separate verification."
+      : rubric.total >= 15
+        ? "The response demonstrates some useful development. Improve weaker areas with clearer explanations and relevant examples."
+        : "The response needs further development. Focus on answering the question directly and supporting your points with relevant details.";
+  return {
+    questionId,
+    score: rubric.total,
+    maxScore: 25,
+    rubric: {
+      completeness: rubric.completeness,
+      structure: rubric.structure,
+      specificity: rubric.specificity,
+      relevance: rubric.relevance,
+      communication: rubric.communication,
+      total: rubric.total,
+    },
   feedback,
   strengths,
   improvements,

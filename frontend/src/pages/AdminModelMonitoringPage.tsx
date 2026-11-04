@@ -25,9 +25,9 @@ interface AdminModelMonitoringPageProps {
 }
 
 const rubricLabels = [
-  { key: "completeness", label: "Completeness", max: 4 },
-  { key: "structure", label: "Structure", max: 3 },
-  { key: "specificity", label: "Specificity", max: 3 },
+  { key: "completeness", label: "Completeness", max: 5 },
+  { key: "structure", label: "Structure", max: 5 },
+  { key: "specificity", label: "Specificity", max: 5 },
   { key: "relevance", label: "Relevance", max: 5 },
   { key: "communication", label: "Communication", max: 5 },
 ] as const;

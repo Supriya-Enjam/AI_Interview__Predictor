@@ -150,47 +150,51 @@ export default function InterviewSetupPage({
     };
   }, [token]);
 
-  // =========================================================
-  // LOAD QUESTION BANK PREVIEW
-  // =========================================================
+  
+// =========================================================
+// LOAD QUESTION BANK PREVIEW
+// =========================================================
 
-  useEffect(() => {
-    let cancelled = false;
+useEffect(() => {
+  let cancelled = false;
 
-    async function loadPreview() {
-      if (!token) {
-        return;
-      }
-
-      setPreviewLoading(true);
-
-      try {
-        const preview = await getQuestionBankPreview(token, {
-          category,
-          difficulty,
-          targetRole: targetRole.trim() || "product engineer",
-        });
-
-        if (!cancelled) {
-          setPreviewQuestions(preview.slice(0, 3));
-        }
-      } catch {
-        if (!cancelled) {
-          setPreviewQuestions([]);
-        }
-      } finally {
-        if (!cancelled) {
-          setPreviewLoading(false);
-        }
-      }
+  async function loadPreview() {
+    if (!token || targetRole.trim().length < 2) {
+      setPreviewQuestions([]);
+      setPreviewLoading(false);
+      return;
     }
 
-    void loadPreview();
+    setPreviewLoading(true);
 
-    return () => {
-      cancelled = true;
-    };
-  }, [category, difficulty, targetRole, token]);
+    try {
+      const preview = await getQuestionBankPreview(token, {
+        category,
+        difficulty,
+        targetRole: targetRole.trim(),
+      });
+
+      if (!cancelled) {
+        setPreviewQuestions(preview.slice(0, 3));
+      }
+    } catch {
+      if (!cancelled) {
+        setPreviewQuestions([]);
+      }
+    } finally {
+      if (!cancelled) {
+        setPreviewLoading(false);
+      }
+    }
+  }
+
+  void loadPreview();
+
+  return () => {
+    cancelled = true;
+  };
+}, [category, difficulty, targetRole, token]);
+  
 
   // =========================================================
   // APPLY ADAPTIVE RECOMMENDATION

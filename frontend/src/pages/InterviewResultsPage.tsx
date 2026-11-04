@@ -789,25 +789,29 @@ const overallKeywordCoverage =
                     (item) => item.questionId === result.questionId
                   );
 
-                  const matched = result.matchedConcepts ?? [];
-                  const missing = result.missingConcepts ?? [];
-                  const rubricItems = [
+            const matched = result.matchedConcepts ?? [];
+const missing = result.missingConcepts ?? [];
+
+const usesFivePointRubric = result.maxScore >= 25;
+const rubricTotalMax = usesFivePointRubric ? 25 : 20;
+
+const rubricItems = [
   {
     label: "Completeness",
     score: result.rubric?.completeness ?? 0,
-    maxScore: 4,
+    maxScore: usesFivePointRubric ? 5 : 4,
     color: "bg-blue-500",
   },
   {
     label: "Structure",
     score: result.rubric?.structure ?? 0,
-    maxScore: 3,
+    maxScore: usesFivePointRubric ? 5 : 3,
     color: "bg-cyan-500",
   },
   {
     label: "Specificity",
     score: result.rubric?.specificity ?? 0,
-    maxScore: 3,
+    maxScore: usesFivePointRubric ? 5 : 3,
     color: "bg-violet-500",
   },
   {
@@ -825,6 +829,7 @@ const overallKeywordCoverage =
 ];
 
 const hasRubric = Boolean(result.rubric);
+
                   const coverage = Math.max(
                     0,
                     Math.min(100, result.conceptCoverage ?? 0)
@@ -988,10 +993,10 @@ const keywordCoverage = Math.max(
     </h4>
 
     {hasRubric && (
-      <span className="text-sm font-bold text-indigo-300">
-        {result.rubric.total}/20
-      </span>
-    )}
+  <span className="text-sm font-bold text-indigo-300">
+    {result.rubric.total}/{rubricTotalMax}
+  </span>
+)}
   </div>
 
   {hasRubric ? (
