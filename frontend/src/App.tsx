@@ -1,5 +1,11 @@
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { Sun, Moon } from "lucide-react";
 import {
   BrowserRouter,
@@ -92,13 +98,14 @@ function AppRoutes() {
     try {
       const savedTheme = localStorage.getItem("interviewiq_theme");
       return savedTheme === "dark" ? "dark" : "light";
-    } catch {
+    } catch (error) {
+      console.error("Could not read theme preference:", error);
       return "light";
     }
   });
 
   // Apply theme across the entire website
-  useEffect(() => {
+  useLayoutEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
     document.body.classList.toggle("dark", theme === "dark");
 

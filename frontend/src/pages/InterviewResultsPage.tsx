@@ -373,7 +373,7 @@ const overallKeywordCoverage =
               onClick={() =>
                 navigate(`/interview/${encodeURIComponent(interview.id)}`)
               }
-              className="mt-5 rounded-xl bg-amber-600 px-5 py-3 font-semibold text-white hover:bg-amber-500"
+              className="mt-5 rounded-xl bg-amber-700 px-5 py-3 font-semibold text-white hover:bg-amber-800"
             >
               Continue Interview
             </button>

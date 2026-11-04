@@ -594,3 +594,448 @@ body.dark {
 :is(:root.dark, body.dark) textarea::placeholder {
   color: var(--app-dark-text-muted);
 }
+
+:root {
+  --app-background: #f7f8fc;
+  --app-surface: #ffffff;
+  --app-surface-subtle: #f1f5f9;
+  --app-text: #172033;
+  --app-text-muted: #475569;
+  --app-border: #7c8ba0;
+  --app-dark-background: #0b1220;
+  --app-dark-surface: #111c2f;
+  --app-dark-surface-subtle: #1a2940;
+  --app-dark-text: #f8fafc;
+  --app-dark-text-muted: #cbd5e1;
+  --app-dark-border: #718096;
+  --app-accent-text: #1d4ed8;
+  --app-accent-dark-text: #bfdbfe;
+  --app-success-text: #0f766e;
+  --app-success-dark-text: #5eead4;
+  --app-warning-text: #92400e;
+  --app-warning-dark-text: #fcd34d;
+  --app-danger-text: #b91c1c;
+  --app-danger-dark-text: #fca5a5;
+  --app-focus-ring: #2563eb;
+}
+
+:root.dark {
+  color-scheme: dark;
+  --app-background: var(--app-dark-background);
+  --app-surface: var(--app-dark-surface);
+  --app-surface-subtle: var(--app-dark-surface-subtle);
+  --app-text: var(--app-dark-text);
+  --app-text-muted: var(--app-dark-text-muted);
+  --app-border: var(--app-dark-border);
+  --primary-blue: #60a5fa;
+  --accent-teal: #5eead4;
+}
+
+body {
+  color: var(--app-text);
+  background-color: var(--app-background);
+}
+
+#root {
+  color: var(--app-text);
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline-color: var(--app-focus-ring);
+}
+
+input,
+select,
+textarea {
+  color: var(--app-text);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--app-text-muted);
+  opacity: 1;
+}
+
+select option {
+  color: var(--app-text);
+  background-color: var(--app-surface);
+}
+
+#root [class*="bg-slate-950"],
+#root [class*="bg-[#FAF9FF]"] {
+  background-color: var(--app-background);
+}
+
+#root [class*="bg-slate-900"],
+#root [class*="bg-white"] {
+  background-color: var(--app-surface);
+}
+
+#root [class*="bg-slate-800"],
+#root [class~="bg-slate-50"],
+#root [class~="dark:bg-slate-50"],
+#root [class*="bg-slate-100"],
+#root [class~="bg-gray-50"],
+#root [class~="dark:bg-gray-50"],
+#root [class*="bg-gray-100"],
+#root [class*="bg-gray-200"],
+#root [class*="bg-[#F3E8FF]"] {
+  background-color: var(--app-surface-subtle);
+}
+
+#root [class*="border-slate-"],
+#root [class*="border-gray-"],
+#root [class*="border-[#E9DDF7]"] {
+  border-color: var(--app-border);
+}
+
+#root [class*="text-slate-50"],
+#root [class*="text-slate-100"],
+#root [class*="text-slate-200"],
+#root [class*="text-slate-300"],
+#root [class*="text-slate-700"],
+#root [class*="text-slate-800"],
+#root [class*="text-slate-900"],
+#root [class*="text-gray-700"],
+#root [class*="text-gray-800"],
+#root [class*="text-gray-900"],
+#root [class*="text-[#1F1633]"] {
+  color: var(--app-text);
+}
+
+#root [class*="text-slate-400"],
+#root [class*="text-slate-500"],
+#root [class*="text-slate-600"],
+#root [class*="text-gray-300"],
+#root [class*="text-gray-400"],
+#root [class*="text-gray-500"],
+#root [class*="text-gray-600"] {
+  color: var(--app-text-muted);
+}
+
+#root [class*="text-[#4C1D95]"],
+#root [class*="text-indigo-100"],
+#root [class*="text-indigo-200"],
+#root [class*="text-indigo-300"],
+#root [class*="text-violet-100"],
+#root [class*="text-violet-200"],
+#root [class*="text-violet-300"],
+#root [class*="text-purple-100"],
+#root [class*="text-purple-200"],
+#root [class*="text-purple-300"],
+#root [class*="text-blue-100"],
+#root [class*="text-blue-200"],
+#root [class*="text-blue-300"],
+#root [class*="text-blue-400"],
+#root [class*="text-blue-500"],
+#root [class*="text-sky-100"],
+#root [class*="text-sky-200"],
+#root [class*="text-sky-300"],
+#root [class*="text-sky-400"],
+#root [class*="text-sky-500"],
+#root [class*="text-cyan-100"],
+#root [class*="text-cyan-200"],
+#root [class*="text-cyan-300"],
+#root [class*="text-cyan-400"],
+#root [class*="text-cyan-500"] {
+  color: var(--app-accent-text);
+}
+
+#root [class*="text-emerald-100"],
+#root [class*="text-emerald-200"],
+#root [class*="text-emerald-300"],
+#root [class*="text-emerald-400"],
+#root [class*="text-teal-100"],
+#root [class*="text-teal-200"],
+#root [class*="text-teal-300"],
+#root [class*="text-teal-400"],
+#root [class*="text-green-100"],
+#root [class*="text-green-200"],
+#root [class*="text-green-300"],
+#root [class*="text-green-400"] {
+  color: var(--app-success-text);
+}
+
+#root [class*="text-amber-100"],
+#root [class*="text-amber-200"],
+#root [class*="text-amber-300"],
+#root [class*="text-amber-400"],
+#root [class*="text-yellow-100"],
+#root [class*="text-yellow-200"],
+#root [class*="text-yellow-300"],
+#root [class*="text-yellow-400"],
+#root [class*="text-yellow-500"],
+#root [class*="text-yellow-600"],
+#root [class*="text-yellow-700"],
+#root [class*="text-orange-100"],
+#root [class*="text-orange-200"],
+#root [class*="text-orange-300"],
+#root [class*="text-orange-400"],
+#root [class*="text-orange-500"],
+#root [class*="text-orange-600"],
+#root [class*="text-orange-700"],
+#root [class*="text-amber-500"],
+#root [class*="text-amber-600"],
+#root [class*="text-amber-700"] {
+  color: var(--app-warning-text);
+}
+
+#root [class*="text-red-100"],
+#root [class*="text-red-200"],
+#root [class*="text-red-300"],
+#root [class*="text-red-400"],
+#root [class*="text-red-500"],
+#root [class*="text-red-600"],
+#root [class*="text-red-700"],
+#root [class*="text-rose-100"],
+#root [class*="text-rose-200"],
+#root [class*="text-rose-300"],
+#root [class*="text-rose-400"],
+#root [class*="text-rose-500"],
+#root [class*="text-rose-600"],
+#root [class*="text-rose-700"] {
+  color: var(--app-danger-text);
+}
+
+#root [class*="text-emerald-500"],
+#root [class*="text-emerald-600"],
+#root [class*="text-emerald-700"],
+#root [class*="text-teal-500"],
+#root [class*="text-teal-600"],
+#root [class*="text-teal-700"],
+#root [class*="text-green-500"],
+#root [class*="text-green-600"],
+#root [class*="text-green-700"] {
+  color: var(--app-success-text);
+}
+
+#root [class~="bg-white/95"] {
+  background-color: color-mix(in srgb, var(--app-surface) 95%, transparent);
+}
+
+#root [class~="bg-white/15"] {
+  background-color: rgb(255 255 255 / 15%);
+}
+
+#root [class~="text-white"] {
+  color: var(--app-text);
+}
+
+#root [class*="bg-slate-950"][class~="text-white"],
+#root [class*="bg-slate-900"][class~="text-white"],
+#root [class*="bg-slate-800"][class~="text-white"],
+#root [class*="bg-slate-950"] [class~="text-white"],
+#root [class*="bg-slate-900"] [class~="text-white"],
+#root [class*="bg-slate-800"] [class~="text-white"] {
+  color: var(--app-text);
+}
+
+:root:not(.dark) #root [class*="bg-gradient-to-"] [class~="text-white"],
+:root:not(.dark) #root [class*="bg-gradient-to-"][class~="text-white"] {
+  color: #ffffff;
+}
+
+:root:not(.dark) #root [class*="bg-indigo-"][class~="text-white"],
+:root:not(.dark) #root [class*="bg-violet-"][class~="text-white"],
+:root:not(.dark) #root [class*="bg-purple-"][class~="text-white"],
+:root:not(.dark) #root [class*="bg-blue-"][class~="text-white"],
+:root:not(.dark) #root [class*="bg-red-"][class~="text-white"],
+:root:not(.dark) #root [class*="bg-rose-"][class~="text-white"],
+:root:not(.dark) #root [class*="bg-emerald-"][class~="text-white"],
+:root:not(.dark) #root [class*="bg-teal-"][class~="text-white"],
+:root:not(.dark) #root [class*="bg-green-"][class~="text-white"],
+:root:not(.dark) #root [class*="bg-amber-"][class~="text-white"],
+:root:not(.dark) #root [class*="bg-yellow-"][class~="text-white"],
+:root:not(.dark) #root [class*="bg-orange-"][class~="text-white"],
+:root:not(.dark) #root [class*="bg-cyan-"][class~="text-white"],
+:root:not(.dark) #root [class*="bg-sky-"][class~="text-white"],
+:root:not(.dark) #root [class*="bg-pink-"][class~="text-white"],
+:root:not(.dark) #root [class*="bg-indigo-"] [class~="text-white"],
+:root:not(.dark) #root [class*="bg-violet-"] [class~="text-white"],
+:root:not(.dark) #root [class*="bg-purple-"] [class~="text-white"],
+:root:not(.dark) #root [class*="bg-blue-"] [class~="text-white"],
+:root:not(.dark) #root [class*="bg-red-"] [class~="text-white"],
+:root:not(.dark) #root [class*="bg-rose-"] [class~="text-white"],
+:root:not(.dark) #root [class*="bg-emerald-"] [class~="text-white"],
+:root:not(.dark) #root [class*="bg-teal-"] [class~="text-white"],
+:root:not(.dark) #root [class*="bg-green-"] [class~="text-white"],
+:root:not(.dark) #root [class*="bg-amber-"] [class~="text-white"],
+:root:not(.dark) #root [class*="bg-yellow-"] [class~="text-white"],
+:root:not(.dark) #root [class*="bg-orange-"] [class~="text-white"],
+:root:not(.dark) #root [class*="bg-cyan-"] [class~="text-white"],
+:root:not(.dark) #root [class*="bg-sky-"] [class~="text-white"],
+:root:not(.dark) #root [class*="bg-pink-"] [class~="text-white"] {
+  color: #ffffff;
+}
+
+:root.dark body {
+  color: var(--app-text);
+  background-color: var(--app-background);
+}
+
+:root.dark #root [class*="bg-slate-950"],
+:root.dark #root [class*="bg-[#FAF9FF]"] {
+  background-color: var(--app-background);
+}
+
+:root.dark #root [class*="bg-slate-900"],
+:root.dark #root [class*="bg-white"],
+:root.dark #root [class*="bg-indigo-50"],
+:root.dark #root [class*="bg-indigo-100"],
+:root.dark #root [class*="bg-purple-50"],
+:root.dark #root [class*="bg-purple-100"] {
+  background-color: var(--app-surface);
+}
+
+:root.dark #root [class~="bg-white/95"] {
+  background-color: color-mix(in srgb, var(--app-surface) 95%, transparent);
+}
+
+:root.dark #root [class~="bg-white/15"] {
+  background-color: rgb(255 255 255 / 15%);
+}
+
+:root.dark #root [class*="bg-slate-800"],
+:root.dark #root [class~="bg-slate-50"],
+:root.dark #root [class~="dark:bg-slate-50"],
+:root.dark #root [class*="bg-slate-100"],
+:root.dark #root [class~="bg-gray-50"],
+:root.dark #root [class~="dark:bg-gray-50"],
+:root.dark #root [class*="bg-gray-100"],
+:root.dark #root [class*="bg-gray-200"],
+:root.dark #root [class*="bg-[#F3E8FF]"] {
+  background-color: var(--app-surface-subtle);
+}
+
+:root.dark #root [class~="bg-red-50"],
+:root.dark #root [class~="bg-red-100"],
+:root.dark #root [class~="dark:bg-red-50"],
+:root.dark #root [class~="dark:bg-red-100"],
+:root.dark #root [class~="bg-rose-50"],
+:root.dark #root [class~="bg-rose-100"],
+:root.dark #root [class~="dark:bg-rose-50"],
+:root.dark #root [class~="dark:bg-rose-100"] {
+  background-color: #3b202a;
+}
+
+:root.dark #root [class~="bg-amber-50"],
+:root.dark #root [class~="bg-amber-100"],
+:root.dark #root [class~="dark:bg-amber-50"],
+:root.dark #root [class~="dark:bg-amber-100"],
+:root.dark #root [class~="bg-yellow-50"],
+:root.dark #root [class~="bg-yellow-100"],
+:root.dark #root [class~="dark:bg-yellow-50"],
+:root.dark #root [class~="dark:bg-yellow-100"],
+:root.dark #root [class~="bg-orange-50"],
+:root.dark #root [class~="bg-orange-100"],
+:root.dark #root [class~="dark:bg-orange-50"],
+:root.dark #root [class~="dark:bg-orange-100"] {
+  background-color: #352b19;
+}
+
+:root.dark #root [class~="bg-green-50"],
+:root.dark #root [class~="bg-green-100"],
+:root.dark #root [class~="dark:bg-green-50"],
+:root.dark #root [class~="dark:bg-green-100"],
+:root.dark #root [class~="bg-emerald-50"],
+:root.dark #root [class~="bg-emerald-100"],
+:root.dark #root [class~="dark:bg-emerald-50"],
+:root.dark #root [class~="dark:bg-emerald-100"],
+:root.dark #root [class~="bg-teal-50"],
+:root.dark #root [class~="bg-teal-100"],
+:root.dark #root [class~="dark:bg-teal-50"],
+:root.dark #root [class~="dark:bg-teal-100"] {
+  background-color: #102a2a;
+}
+
+:root.dark #root [class~="bg-blue-50"],
+:root.dark #root [class~="bg-blue-100"],
+:root.dark #root [class~="dark:bg-blue-50"],
+:root.dark #root [class~="dark:bg-blue-100"],
+:root.dark #root [class~="bg-sky-50"],
+:root.dark #root [class~="bg-sky-100"],
+:root.dark #root [class~="dark:bg-sky-50"],
+:root.dark #root [class~="dark:bg-sky-100"],
+:root.dark #root [class~="bg-cyan-50"],
+:root.dark #root [class~="bg-cyan-100"],
+:root.dark #root [class~="dark:bg-cyan-50"],
+:root.dark #root [class~="dark:bg-cyan-100"],
+:root.dark #root [class~="bg-violet-50"],
+:root.dark #root [class~="bg-violet-100"],
+:root.dark #root [class~="dark:bg-violet-50"],
+:root.dark #root [class~="dark:bg-violet-100"] {
+  background-color: #1b2b45;
+}
+
+:root.dark #root [class*="border-slate-"],
+:root.dark #root [class*="border-gray-"],
+:root.dark #root [class*="border-[#E9DDF7]"],
+:root.dark #root [class*="border-indigo-100"],
+:root.dark #root [class*="border-indigo-200"],
+:root.dark #root [class*="border-purple-200"] {
+  border-color: var(--app-border);
+}
+
+:root.dark #root [class*="text-slate-"],
+:root.dark #root [class*="text-gray-"],
+:root.dark #root [class*="text-[#1F1633]"] {
+  color: var(--app-text);
+}
+
+:root.dark #root [class*="text-slate-400"],
+:root.dark #root [class*="text-slate-500"],
+:root.dark #root [class*="text-slate-600"],
+:root.dark #root [class*="text-gray-400"],
+:root.dark #root [class*="text-gray-500"],
+:root.dark #root [class*="text-gray-600"] {
+  color: var(--app-text-muted);
+}
+
+:root.dark #root [class*="text-[#4C1D95]"],
+:root.dark #root [class*="text-indigo-"],
+:root.dark #root [class*="text-violet-"],
+:root.dark #root [class*="text-purple-"],
+:root.dark #root [class*="text-blue-"],
+:root.dark #root [class*="text-sky-"],
+:root.dark #root [class*="text-cyan-"] {
+  color: var(--app-accent-dark-text);
+}
+
+:root.dark #root [class*="text-emerald-"],
+:root.dark #root [class*="text-teal-"],
+:root.dark #root [class*="text-green-"] {
+  color: var(--app-success-dark-text);
+}
+
+:root.dark #root [class*="text-amber-"],
+:root.dark #root [class*="text-yellow-"],
+:root.dark #root [class*="text-orange-"] {
+  color: var(--app-warning-dark-text);
+}
+
+:root.dark #root [class*="text-red-"],
+:root.dark #root [class*="text-rose-"] {
+  color: var(--app-danger-dark-text);
+}
+
+:root.dark #root [class*="bg-slate-"][class~="text-white"],
+:root.dark #root [class*="bg-slate-"] [class~="text-white"] {
+  color: #ffffff;
+}
+
+:root.dark input::placeholder,
+:root.dark textarea::placeholder {
+  color: var(--app-text-muted);
+}
+
+/* Preserve light foregrounds on the few branded dark gradient panels. */
+#root [class*="bg-gradient-to-"] [class*="text-indigo-300"],
+#root [class*="bg-gradient-to-"] [class*="text-violet-300"],
+#root [class*="bg-gradient-to-"] [class*="text-purple-300"],
+#root [class*="bg-gradient-to-"] [class*="text-slate-300"] {
+  color: #dbeafe;
+}

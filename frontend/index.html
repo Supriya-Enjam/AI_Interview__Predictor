@@ -4,6 +4,18 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      try {
+        const theme =
+          localStorage.getItem("interviewiq_theme") === "dark"
+            ? "dark"
+            : "light";
+        document.documentElement.classList.toggle("dark", theme === "dark");
+        document.documentElement.style.colorScheme = theme;
+      } catch (error) {
+        console.error("Could not read theme preference:", error);
+      }
+    </script>
     <title>frontend</title>
   </head>
   <body>
