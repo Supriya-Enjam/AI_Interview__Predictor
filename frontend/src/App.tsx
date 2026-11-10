@@ -539,7 +539,8 @@ useEffect(() => {
   onClick={toggleTheme}
   aria-label={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
   title={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
-  className="fixed bottom-6 right-6 z-[180] flex h-12 w-12 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-800 shadow-xl transition-all duration-300 hover:scale-110 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-yellow-300 dark:hover:bg-slate-700"
+  aria-pressed={theme === "dark"}
+  className="theme-toggle fixed bottom-6 right-6 z-[180] flex h-12 w-12 items-center justify-center rounded-full border transition-all duration-300 hover:scale-105"
 >
   {theme === "light" ? (
     <Moon size={22} />

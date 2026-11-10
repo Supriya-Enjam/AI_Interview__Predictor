@@ -165,7 +165,7 @@ export default function DashboardLayout({
   const linkClass = (active: boolean) =>
     `group flex min-h-11 items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-all duration-200 ${
       active
-        ? "bg-indigo-600 text-white shadow-sm shadow-indigo-200"
+        ? "bg-indigo-600 text-white shadow-sm shadow-indigo-950/20"
         : "text-slate-600 hover:bg-indigo-50 hover:text-indigo-700"
     }`;
 
