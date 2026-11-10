@@ -13,6 +13,7 @@ import adminRoutes from "./routes/adminRoutes";
 
 import resumeRoutes from "./routes/resumeRoutes";
 import learningProgressRoutes from "./routes/learningProgressRoutes";
+import chatbotRoutes from "./routes/chatbotRoutes";
 
 const app = express();
 const PORT = Number(process.env.PORT) || 5000;
@@ -29,6 +30,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/interviews", interviewRoutes);
 app.use("/api/admin", adminRoutes);  
 app.use("/api/resumes", resumeRoutes);
+app.use("/api/chatbot", chatbotRoutes);
 app.use("/api/learning-progress", learningProgressRoutes);
 app.get("/api/health", (_req, res) => {
   res.status(200).json({

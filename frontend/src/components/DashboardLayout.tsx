@@ -1,5 +1,6 @@
 
 import { useState } from "react";
+import ChatbotWidget from "./ChatbotWidget";
 import {
   NavLink,
   Outlet,
@@ -401,10 +402,13 @@ export default function DashboardLayout({
           <Outlet />
         </main>
 
-        <footer className="border-t border-[#E9DDF7] px-6 py-5 text-center text-xs text-slate-600">
+               <footer className="border-t border-[#E9DDF7] px-6 py-5 text-center text-xs text-slate-600">
           InterviewIQ · AI-powered interview preparation
         </footer>
       </div>
+
+      {/* AI Chatbot - available throughout the dashboard */}
+      <ChatbotWidget />
     </div>
   );
 }
