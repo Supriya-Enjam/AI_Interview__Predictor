@@ -234,14 +234,15 @@ export default function ChatbotWidget() {
 
     // Convert frontend messages into backend history format.
     const history: ApiHistoryMessage[] = previousMessages
-      .slice(-10)
-      .map((item) => ({
-        role:
-          item.role === "assistant"
-            ? "model"
-            : "user",
-        text: item.text.trim(),
-      }));
+  .slice(-10)
+  .map((item) => ({
+    role:
+      item.role === "assistant"
+        ? "model"
+        : "user",
+    // Backend allows a maximum of 4000 characters.
+    text: item.text.trim().slice(-4000),
+  }));
 
     setMessages((previous) => [
       ...previous,
