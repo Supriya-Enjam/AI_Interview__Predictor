@@ -95,6 +95,65 @@ const suggestions = [
   "How can I improve my communication skills?",
 ];
 
+
+
+// =====================================================
+// CHAT HISTORY STORAGE
+// =====================================================
+
+const getChatStorageKey = (): string => {
+  try {
+    const savedSession = sessionStorage.getItem(
+      "interviewiq_session"
+    );
+
+    if (!savedSession) {
+      return "interviewiq_chat_guest";
+    }
+
+    const session = JSON.parse(savedSession) as StoredSession;
+
+    return `interviewiq_chat_${session.user.id}`;
+  } catch {
+    return "interviewiq_chat_guest";
+  }
+};
+
+const loadChatHistory = (): ChatMessage[] => {
+  try {
+    const savedMessages = localStorage.getItem(
+      getChatStorageKey()
+    );
+
+    if (!savedMessages) {
+      return [welcomeMessage];
+    }
+
+    const parsed = JSON.parse(savedMessages);
+
+    if (!Array.isArray(parsed)) {
+      return [welcomeMessage];
+    }
+
+    const validMessages: ChatMessage[] = parsed.filter(
+      (item): item is ChatMessage =>
+        item &&
+        typeof item.id === "string" &&
+        (item.role === "assistant" || item.role === "user") &&
+        typeof item.text === "string"
+    );
+
+    return [
+      welcomeMessage,
+      ...validMessages.slice(-50),
+    ];
+  } catch (error) {
+    console.error("Unable to load chat history:", error);
+    return [welcomeMessage];
+  }
+};
+
+
 // =====================================================
 // CHATBOT COMPONENT
 // =====================================================
@@ -103,9 +162,9 @@ export default function ChatbotWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState("");
 
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    welcomeMessage,
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>(
+  loadChatHistory
+);
 
   const [isListening, setIsListening] = useState(false);
   const [voiceSupported, setVoiceSupported] = useState(false);
@@ -145,6 +204,29 @@ export default function ChatbotWidget() {
       behavior: "smooth",
     });
   }, [messages, isOpen, isLoading]);
+
+
+// =====================================================
+// SAVE CHAT HISTORY AUTOMATICALLY
+// =====================================================
+
+const chatStorageKey = getChatStorageKey();
+
+useEffect(() => {
+  try {
+    const messagesToSave = messages
+      .filter((item) => item.id !== "welcome")
+      .slice(-50);
+
+    localStorage.setItem(
+      chatStorageKey,
+      JSON.stringify(messagesToSave)
+    );
+  } catch (error) {
+    console.error("Unable to save chat history:", error);
+  }
+}, [messages, chatStorageKey]);
+
 
   // =====================================================
   // GET AUTHENTICATION TOKEN
